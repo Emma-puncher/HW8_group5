@@ -6,7 +6,7 @@ import java.util.ArrayList;
  * WebNode - 網站節點
  * 用於建立網站樹結構，每個節點代表一個網頁
  */
-class WebNode {
+public class WebNode {
     
     private WebNode parent;              // 父節點
     private ArrayList<WebNode> children; // 子節點列表

@@ -1,3 +1,5 @@
+package com.example.GoogleQuery.model;
+
 /**
  * SearchResult - 搜尋結果封裝類別
  * 將 WebPage 和其對應的分數包裝在一起

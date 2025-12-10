@@ -6,6 +6,8 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import com.example.GoogleQuery.core.KeywordParser;
+
 /**
  * WebPage - 代表一個網站
  * 包含 URL、名稱、內容、分數等資訊
@@ -38,6 +40,27 @@ public class WebPage {
         this.score = 0.0;
         this.hashtags = "";
         this.preview = "";
+        this.district = "";
+        this.category = "";
+        this.address = "";
+        this.tags = new ArrayList<>();
+    }
+
+    /**
+     * 建構子（含網頁內容）
+     * @param url 網站 URL
+     * @param name 網站名稱
+     * @param content 網頁文字內容
+     */
+    public WebPage(String url, String name, String content) {
+        this.url = url;
+        this.name = name;
+        this.counter = new WordCounter(url);
+        this.score = 0.0;
+        this.hashtags = "";
+        this.preview = content != null && content.length() > 200 
+            ? content.substring(0, 200) + "..." 
+            : content;
         this.district = "";
         this.category = "";
         this.address = "";
