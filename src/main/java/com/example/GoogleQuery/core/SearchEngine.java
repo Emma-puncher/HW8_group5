@@ -2,6 +2,8 @@ package com.example.GoogleQuery.core;
 
 import com.example.GoogleQuery.model.*;
 import java.util.*;
+import com.example.GoogleQuery.service.KeywordService;
+import com.example.GoogleQuery.service.RankingService;
 
 /**
  * SearchEngine - 咖啡廳搜尋引擎核心類別
@@ -15,6 +17,9 @@ public class SearchEngine {
     private HashtagGenerator hashtagGenerator;         // Hashtag 生成器
     private BaselineScoreCalculator baselineCalculator; // 基準分數計算器
     private Map<String, WebTree> webTrees;            // 網站樹結構
+
+    private KeywordService keywordService;         // 關鍵字服務
+    private RankingService rankingService;         // 排名服務
     
     /**
      * 建構子
@@ -23,6 +28,7 @@ public class SearchEngine {
         this.allPages = new ArrayList<>();
         this.keywords = new ArrayList<>();
         this.webTrees = new HashMap<>();
+        this.ranker = new Ranker(allPages);
         this.hashtagGenerator = new HashtagGenerator();
         this.baselineCalculator = new BaselineScoreCalculator();
     }
@@ -36,8 +42,61 @@ public class SearchEngine {
         this.allPages = pages != null ? pages : new ArrayList<>();
         this.keywords = keywords != null ? keywords : new ArrayList<>();
         this.webTrees = new HashMap<>();
+        this.ranker = new Ranker(null);
         this.hashtagGenerator = new HashtagGenerator();
         this.baselineCalculator = new BaselineScoreCalculator();
+    }
+
+    /**
+     * 建構子（整合 Service 層）(SearchService 會使用)
+     * @param keywordService 關鍵字服務
+     * @param rankingService 排名服務
+     */
+    public SearchEngine(KeywordService keywordService, RankingService rankingService) {
+        this.allPages = new ArrayList<>();
+        this.keywords = new ArrayList<>();
+        this.webTrees = new HashMap<>();
+        this.ranker = new Ranker(null);
+        this.hashtagGenerator = new HashtagGenerator();
+        this.baselineCalculator = new BaselineScoreCalculator();
+        
+        // 保存 Service 參考
+        this.keywordService = keywordService;
+        this.rankingService = rankingService;
+        
+        // 從 KeywordService 載入關鍵字
+        if (keywordService != null) {
+            loadKeywordsFromService();
+        }
+    }
+
+    /**
+     * 從 KeywordService 載入關鍵字
+     */
+    private void loadKeywordsFromService() {
+        List<com.example.GoogleQuery.model.Keyword> allKeywords = 
+            keywordService.getAllKeywords();
+        
+        for (com.example.GoogleQuery.model.Keyword kw : allKeywords) {
+            // 假設你的 core.Keyword 和 model.Keyword 需要轉換
+            // 或者直接使用同一個 Keyword 類別
+            this.keywords.add(kw);
+        }
+    }
+
+    /**
+     * 設定 KeywordService（如果需要在建立後設定）
+     */
+    public void setKeywordService(KeywordService keywordService) {
+        this.keywordService = keywordService;
+        loadKeywordsFromService();
+    }
+
+    /**
+     * 設定 RankingService（如果需要在建立後設定）
+     */
+    public void setRankingService(RankingService rankingService) {
+        this.rankingService = rankingService;
     }
     
     /**
@@ -63,6 +122,26 @@ public class SearchEngine {
      */
     public ArrayList<SearchResult> search(String query) {
         return search(query, null, null);
+    }
+
+    /**
+     * 基本搜尋（不帶篩選條件）
+     * @param query 搜尋字串
+     * @param pages 要搜尋的網頁列表
+     * @return 排序後的搜尋結果
+     */
+    public ArrayList<SearchResult> search(String query, ArrayList<WebPage> pages) {
+        // 暫時設定 allPages 為傳入的 pages
+        ArrayList<WebPage> originalPages = this.allPages;
+        this.allPages = pages;
+        
+        // 呼叫進階搜尋，不帶篩選條件
+        ArrayList<SearchResult> results = search(query, null, null);
+        
+        // 恢復原本的 allPages
+        this.allPages = originalPages;
+        
+        return results;
     }
     
     /**
@@ -98,6 +177,8 @@ public class SearchEngine {
         
         return results;
     }
+
+    
     
     /**
      * 根據查詢字串動態調整關鍵字權重
@@ -150,6 +231,11 @@ public class SearchEngine {
             
             // 檢查功能篩選
             if (features != null && !features.isEmpty()) {
+                matchFeature = pageHasFeatures(page, features);
+            }
+
+            /*  檢查功能篩選
+            if (features != null && !features.isEmpty()) {
                 matchFeature = false;
                 for (String feature : features) {
                     if (page.getCategory().contains(feature)) {
@@ -158,7 +244,8 @@ public class SearchEngine {
                     }
                 }
             }
-            
+            */
+
             // 必須同時符合地區和功能篩選
             if (matchDistrict && matchFeature) {
                 filtered.add(page);
@@ -166,6 +253,35 @@ public class SearchEngine {
         }
         
         return filtered;
+    }
+
+    /**
+     * 檢查網頁是否具有指定的功能
+     * @param page 網頁
+     * @param requiredFeatures 需要的功能列表
+     * @return 是否符合（需要全部符合）
+     */
+    private boolean pageHasFeatures(WebPage page, List<String> requiredFeatures) {
+        if (requiredFeatures == null || requiredFeatures.isEmpty()) {
+            return true;
+        }
+        
+        // 取得頁面的功能列表
+        List<String> pageFeatures = page.getFeatures();
+        
+        // 如果頁面沒有功能資訊，則不符合
+        if (pageFeatures == null || pageFeatures.isEmpty()) {
+            return false;
+        }
+        
+        // 檢查是否包含所有需要的功能（AND 邏輯）
+        for (String required : requiredFeatures) {
+            if (!pageFeatures.contains(required)) {
+                return false;
+            }
+        }
+        
+        return true;
     }
     
     /**

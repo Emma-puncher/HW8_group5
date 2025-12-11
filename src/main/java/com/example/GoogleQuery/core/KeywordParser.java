@@ -1,5 +1,8 @@
+package com.example.GoogleQuery.core;
+
 import java.util.*;
 import java.util.regex.*;
+import com.example.GoogleQuery.model.*;
 
 /**
  * KeywordParser - 負責解析網頁文字並計算關鍵字出現次數

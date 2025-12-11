@@ -1,17 +1,28 @@
+package com.example.GoogleQuery.model;
+import java.util.ArrayList;
+
 /**
  * WebTree - 網站樹
  * 用於建立網站之間的連結關係，並計算深度權重
- */
-class WebTree {
+*/
+public class WebTree {
     
     private WebNode root;  // 根節點
-    
+
     /**
-     * 建構子
-     * @param rootPage 根網頁
+     * 建構子（從 WebPage 建立）
+     * @param rootPage 根節點的 WebPage
      */
     public WebTree(WebPage rootPage) {
         this.root = new WebNode(rootPage);
+    }
+
+    /**
+     * 建構子（從 WebNode 建立）
+     * @param rootNode 根節點
+     */
+    public WebTree(WebNode rootNode) {
+        this.root = rootNode;
     }
     
     /**

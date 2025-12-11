@@ -249,11 +249,19 @@ public class Cafe extends WebPage {
         
         return tags;
     }
+
+    /**
+     * 取得所有功能標籤（別名方法，用於相容性）
+     * @return 功能標籤列表
+     */
+    public List<String> getFeature() {
+        return getFeatureTags();
+    }
     
     /**
      * 檢查是否符合指定功能
      * @param feature 功能名稱
-     * @return true 如果符合
+     * @return true 如果符合 
      */
     public boolean hasFeature(String feature) {
         if (feature == null) return false;

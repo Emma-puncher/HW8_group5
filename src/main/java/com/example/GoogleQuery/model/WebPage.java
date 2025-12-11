@@ -1,3 +1,5 @@
+package com.example.GoogleQuery.model;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +26,7 @@ public class WebPage {
     private String hashtags;              // Top 2-3 關鍵字的 hashtags
     private String preview;               // 預覽文字（前 150-200 字）
     private String district;              // 地區（例：大安區、中山區）
-    private String category;              // 分類（例：不限時、有插座、寵物友善）
+    private String feature;              // 分類（例：不限時、有插座、寵物友善）
     private String address;               // 地址
     private List<String> tags;            // 標籤列表
     
@@ -41,7 +43,7 @@ public class WebPage {
         this.hashtags = "";
         this.preview = "";
         this.district = "";
-        this.category = "";
+        this.feature = "";
         this.address = "";
         this.tags = new ArrayList<>();
     }
@@ -62,7 +64,7 @@ public class WebPage {
             ? content.substring(0, 200) + "..." 
             : content;
         this.district = "";
-        this.category = "";
+        this.feature = "";
         this.address = "";
         this.tags = new ArrayList<>();
     }
@@ -75,10 +77,10 @@ public class WebPage {
      * @param category 分類
      * @param address 地址
      */
-    public WebPage(String url, String name, String district, String category, String address) {
+    public WebPage(String url, String name, String district, String feature, String address) {
         this(url, name);
         this.district = district;
-        this.category = category;
+        this.feature = feature;
         this.address = address;
     }
     
@@ -256,16 +258,16 @@ public class WebPage {
      * 取得分類
      * @return 分類
      */
-    public String getCategory() {
-        return category;
+    public String getFeatures() {
+        return feature;
     }
     
     /**
      * 設定分類
-     * @param category 分類
+     * @param feature 分類
      */
-    public void setCategory(String category) {
-        this.category = category;
+    public void setFeature(String feature) {
+        this.feature = feature;
     }
     
     /**
@@ -305,15 +307,15 @@ public class WebPage {
     /**
      * 檢查是否符合篩選條件
      * @param filterDistrict 篩選地區（null 表示不篩選）
-     * @param filterCategory 篩選分類（null 表示不篩選）
+     * @param filterFeature 篩選功能（null 表示不篩選）
      * @return true 如果符合條件
      */
-    public boolean matchesFilter(String filterDistrict, String filterCategory) {
+    public boolean matchesFilter(String filterDistrict, String filterFeature) {
         boolean districtMatch = (filterDistrict == null || filterDistrict.isEmpty() || 
                                  this.district.equals(filterDistrict));
-        boolean categoryMatch = (filterCategory == null || filterCategory.isEmpty() || 
-                                 this.category.contains(filterCategory));
-        return districtMatch && categoryMatch;
+        boolean featureMatch = (filterFeature == null || filterFeature.isEmpty() || 
+                                 this.feature.contains(filterFeature));
+        return districtMatch && featureMatch;
     }
     
     /**
@@ -332,8 +334,8 @@ public class WebPage {
     public String toJson() {
         return String.format(
             "{\"name\": \"%s\", \"url\": \"%s\", \"score\": %.2f, \"hashtags\": \"%s\", " +
-            "\"preview\": \"%s\", \"district\": \"%s\", \"category\": \"%s\", \"address\": \"%s\"}",
-            name, url, score, hashtags, preview, district, category, address
+            "\"preview\": \"%s\", \"district\": \"%s\", \"feature\": \"%s\", \"address\": \"%s\"}",
+            name, url, score, hashtags, preview, district, feature, address
         );
     }
     

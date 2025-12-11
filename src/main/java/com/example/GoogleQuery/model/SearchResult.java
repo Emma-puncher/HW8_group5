@@ -87,8 +87,8 @@ public class SearchResult implements Comparable<SearchResult> {
      * 取得分類（便利方法）
      * @return 分類
      */
-    public String getCategory() {
-        return page.getCategory();
+    public String getFeatures() {
+        return page.getFeatures();
     }
     
     /**
@@ -121,7 +121,7 @@ public class SearchResult implements Comparable<SearchResult> {
             escapeJson(page.getHashtags()),
             escapeJson(page.getPreview()),
             escapeJson(page.getDistrict()),
-            escapeJson(page.getCategory()),
+            escapeJson(page.getFeatures()),
             escapeJson(page.getAddress())
         );
     }
@@ -142,7 +142,7 @@ public class SearchResult implements Comparable<SearchResult> {
             score,
             page.getHashtags(),
             page.getDistrict(),
-            page.getCategory(),
+            page.getFeatures(),
             page.getAddress(),
             page.getUrl()
         );

@@ -1,4 +1,7 @@
+package com.example.GoogleQuery.core;
+
 import java.util.*;
+import com.example.GoogleQuery.model.*;
 
 /**
  * Ranker - 負責計算網站分數並進行排名

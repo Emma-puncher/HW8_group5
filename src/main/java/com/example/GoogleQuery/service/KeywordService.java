@@ -300,8 +300,8 @@ public class KeywordService {
      * 獲取所有關鍵字
      * @return 所有關鍵字列表
      */
-    public List<String> getAllKeywords() {
-        return new ArrayList<>(allKeywordsMap.keySet());
+    public List<Keyword> getAllKeywords() {
+        return new ArrayList<>(allKeywordsMap.values());
     }
 
     /**
