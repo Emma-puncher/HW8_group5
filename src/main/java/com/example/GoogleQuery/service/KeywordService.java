@@ -19,12 +19,15 @@ import java.util.stream.Collectors;
 @Service
 public class KeywordService {
 
-    // 三層級關鍵字
-    private Map<String, Double> tier1Keywords; // 核心詞 (2.0-3.0)
-    private Map<String, Double> tier2Keywords; // 次要詞 (1.0-1.9)
-    private Map<String, Double> tier3Keywords; // 參考詞 (0.5-1.0)
+    private static final String DATA_FILE_PATH = "data/keywords.json";
+
+    // 關鍵字映射表 (keyword name -> Keyword object)
+    private Map<String, Keyword> keywordMap;
     
-    // 所有關鍵字的統一映射
+    // 層級映射表 (tier number -> List of Keywords)
+    private Map<Integer, List<Keyword>> tierMap;
+    
+    // 所有關鍵字的統一映射（保留向後兼容）
     private Map<String, Keyword> allKeywordsMap;
     
     // 多語言關鍵字對照
@@ -39,85 +42,121 @@ public class KeywordService {
     @PostConstruct
     public void init() {
         try {
-            loadKeywordsData();
+            loadKeywordsFromFile();
             loadTranslations();
             loadStopWords();
             
+            // allKeywordsMap 指向 keywordMap（保持向後兼容）
+            allKeywordsMap = keywordMap;
+            
             System.out.println("KeywordService 初始化完成：");
-            System.out.println("  - Tier 1 關鍵字: " + tier1Keywords.size());
-            System.out.println("  - Tier 2 關鍵字: " + tier2Keywords.size());
-            System.out.println("  - Tier 3 關鍵字: " + tier3Keywords.size());
+            System.out.println("  - Tier 1 關鍵字: " + tierMap.getOrDefault(1, new ArrayList<>()).size());
+            System.out.println("  - Tier 2 關鍵字: " + tierMap.getOrDefault(2, new ArrayList<>()).size());
+            System.out.println("  - Tier 3 關鍵字: " + tierMap.getOrDefault(3, new ArrayList<>()).size());
             System.out.println("  - 停用詞: " + stopWords.size());
             
         } catch (Exception e) {
             System.err.println("KeywordService 初始化失敗: " + e.getMessage());
             initializeDefaultKeywords();
+            allKeywordsMap = keywordMap;
         }
     }
 
     /**
      * 從 JSON 載入關鍵字資料
      */
-    private void loadKeywordsData() throws IOException {
+    private void loadKeywordsFromFile() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        InputStream inputStream = new ClassPathResource("data/keywords.json").getInputStream();
+        InputStream inputStream = new ClassPathResource(DATA_FILE_PATH).getInputStream();
         
-        Map<String, Object> data = mapper.readValue(inputStream, new TypeReference<Map<String, Object>>() {});
+        Map<String, Object> data = mapper.readValue(inputStream, 
+            new TypeReference<Map<String, Object>>() {});
+        
+        keywordMap = new HashMap<>();
+        tierMap = new HashMap<>();
         
         // 載入 Tier 1 關鍵字
-        tier1Keywords = new HashMap<>();
-        Map<String, Object> tier1Data = (Map<String, Object>) data.get("tier1");
-        if (tier1Data != null) {
-            List<String> keywords = (List<String>) tier1Data.get("keywords");
-            Double weight = ((Number) tier1Data.get("weight")).doubleValue();
-            for (String keyword : keywords) {
-                tier1Keywords.put(keyword, weight);
-            }
-        }
+        loadTierKeywords(data, "tier1", 1);
         
         // 載入 Tier 2 關鍵字
-        tier2Keywords = new HashMap<>();
-        Map<String, Object> tier2Data = (Map<String, Object>) data.get("tier2");
-        if (tier2Data != null) {
-            List<String> keywords = (List<String>) tier2Data.get("keywords");
-            Double weight = ((Number) tier2Data.get("weight")).doubleValue();
-            for (String keyword : keywords) {
-                tier2Keywords.put(keyword, weight);
-            }
-        }
+        loadTierKeywords(data, "tier2", 2);
         
         // 載入 Tier 3 關鍵字
-        tier3Keywords = new HashMap<>();
-        Map<String, Object> tier3Data = (Map<String, Object>) data.get("tier3");
-        if (tier3Data != null) {
-            List<String> keywords = (List<String>) tier3Data.get("keywords");
-            Double weight = ((Number) tier3Data.get("weight")).doubleValue();
-            for (String keyword : keywords) {
-                tier3Keywords.put(keyword, weight);
-            }
-        }
-        
-        // 建立統一映射
-        buildAllKeywordsMap();
+        loadTierKeywords(data, "tier3", 3);
     }
 
     /**
-     * 建立所有關鍵字的統一映射
+     * 載入特定層級的關鍵字
      */
-    private void buildAllKeywordsMap() {
-        allKeywordsMap = new HashMap<>();
+    private void loadTierKeywords(Map<String, Object> data, String tierKey, int tierNumber) {
+        @SuppressWarnings("unchecked")
+        Map<String, Object> tierData = (Map<String, Object>) data.get(tierKey);
         
-        tier1Keywords.forEach((keyword, weight) -> 
-            allKeywordsMap.put(keyword, new Keyword(keyword, weight, 1))
+        if (tierData != null) {
+            @SuppressWarnings("unchecked")
+            List<String> keywords = (List<String>) tierData.get("keywords");
+            Double weight = ((Number) tierData.get("weight")).doubleValue();
+            
+            List<Keyword> tierKeywords = new ArrayList<>();
+            
+            for (String keywordName : keywords) {
+                // 使用 tierNumber 建構子（int）
+                Keyword keyword = new Keyword(keywordName, weight, tierNumber);
+                keywordMap.put(keywordName, keyword);
+                tierKeywords.add(keyword);
+            }
+            
+            tierMap.put(tierNumber, tierKeywords);
+        }
+    }
+
+    /**
+     * 初始化預設關鍵字（當無法載入檔案時使用）
+     */
+    private void initializeDefaultKeywords() {
+        keywordMap = new HashMap<>();
+        tierMap = new HashMap<>();
+        
+        // Tier 1: 核心詞 - 使用 int 建構子
+        List<Keyword> tier1 = Arrays.asList(
+            new Keyword("讀書", 2.5, 1),
+            new Keyword("工作", 2.5, 1),
+            new Keyword("安靜", 2.5, 1),
+            new Keyword("插座", 2.5, 1),
+            new Keyword("不限時", 3.0, 1)
         );
         
-        tier2Keywords.forEach((keyword, weight) -> 
-            allKeywordsMap.put(keyword, new Keyword(keyword, weight, 2))
+        // Tier 2: 次要詞
+        List<Keyword> tier2 = Arrays.asList(
+            new Keyword("wifi", 1.5, 2),
+            new Keyword("舒適", 1.5, 2),
+            new Keyword("寬敞", 1.5, 2),
+            new Keyword("明亮", 1.5, 2)
         );
         
-        tier3Keywords.forEach((keyword, weight) -> 
-            allKeywordsMap.put(keyword, new Keyword(keyword, weight, 3))
+        // Tier 3: 參考詞
+        List<Keyword> tier3 = Arrays.asList(
+            new Keyword("咖啡", 0.8, 3),
+            new Keyword("座位", 0.8, 3),
+            new Keyword("環境", 0.8, 3)
         );
+        
+        // 建立索引
+        for (Keyword kw : tier1) {
+            keywordMap.put(kw.getName(), kw);
+        }
+        for (Keyword kw : tier2) {
+            keywordMap.put(kw.getName(), kw);
+        }
+        for (Keyword kw : tier3) {
+            keywordMap.put(kw.getName(), kw);
+        }
+        
+        tierMap.put(1, tier1);
+        tierMap.put(2, tier2);
+        tierMap.put(3, tier3);
+        
+        System.out.println("使用預設關鍵字資料");
     }
 
     /**
@@ -162,31 +201,6 @@ public class KeywordService {
     }
 
     /**
-     * 初始化預設關鍵字（當無法載入 JSON 時使用）
-     */
-    private void initializeDefaultKeywords() {
-        tier1Keywords = new HashMap<>();
-        tier1Keywords.put("讀書", 2.5);
-        tier1Keywords.put("工作", 2.5);
-        tier1Keywords.put("安靜", 2.5);
-        tier1Keywords.put("插座", 2.5);
-        tier1Keywords.put("不限時", 3.0);
-        
-        tier2Keywords = new HashMap<>();
-        tier2Keywords.put("wifi", 1.5);
-        tier2Keywords.put("舒適", 1.5);
-        tier2Keywords.put("寬敞", 1.5);
-        tier2Keywords.put("明亮", 1.5);
-        
-        tier3Keywords = new HashMap<>();
-        tier3Keywords.put("咖啡", 0.8);
-        tier3Keywords.put("座位", 0.8);
-        tier3Keywords.put("環境", 0.8);
-        
-        buildAllKeywordsMap();
-    }
-
-    /**
      * 初始化預設停用詞
      */
     private void initializeDefaultStopWords() {
@@ -202,7 +216,7 @@ public class KeywordService {
      * @return 權重值（如果不存在則返回 0.0）
      */
     public double getKeywordWeight(String keyword) {
-        Keyword kw = allKeywordsMap.get(keyword);
+        Keyword kw = keywordMap.get(keyword);
         return kw != null ? kw.getWeight() : 0.0;
     }
 
@@ -212,7 +226,7 @@ public class KeywordService {
      * @return 是否為領域關鍵字
      */
     public boolean isDomainKeyword(String keyword) {
-        return allKeywordsMap.containsKey(keyword);
+        return keywordMap.containsKey(keyword);
     }
 
     /**
@@ -221,8 +235,17 @@ public class KeywordService {
      * @return 層級 (1, 2, 3) 或 0（不存在）
      */
     public int getKeywordTier(String keyword) {
-        Keyword kw = allKeywordsMap.get(keyword);
-        return kw != null ? kw.getTier() : 0;
+        Keyword kw = keywordMap.get(keyword);
+        return kw != null ? kw.getTierNumber() : 0;
+    }
+
+    /**
+     * 獲取指定層級的關鍵字
+     * @param tier 層級（1, 2, 3）
+     * @return 該層級的關鍵字列表
+     */
+    public List<Keyword> getKeywordsByTier(int tier) {
+        return tierMap.getOrDefault(tier, new ArrayList<>());
     }
 
     /**
@@ -269,7 +292,7 @@ public class KeywordService {
         String input = userInput.toLowerCase();
         
         // 檢查所有領域關鍵字是否出現在輸入中
-        for (String keyword : allKeywordsMap.keySet()) {
+        for (String keyword : keywordMap.keySet()) {
             if (input.contains(keyword)) {
                 domainKeywords.add(keyword);
             }
@@ -301,7 +324,7 @@ public class KeywordService {
      * @return 所有關鍵字列表
      */
     public List<Keyword> getAllKeywords() {
-        return new ArrayList<>(allKeywordsMap.values());
+        return new ArrayList<>(keywordMap.values());
     }
 
     /**
@@ -309,19 +332,7 @@ public class KeywordService {
      * @return 所有關鍵字列表
      */
     public List<String> getAllKeywordsName() {
-        return new ArrayList<>(allKeywordsMap.keySet());
-    }
-
-    /**
-     * 獲取指定層級的關鍵字
-     * @param tier 層級 (1, 2, 3)
-     * @return 該層級的關鍵字列表
-     */
-    public List<String> getKeywordsByTier(int tier) {
-        return allKeywordsMap.values().stream()
-                .filter(kw -> kw.getTier() == tier)
-                .map(Keyword::getName)
-                .collect(Collectors.toList());
+        return new ArrayList<>(keywordMap.keySet());
     }
 
     /**
@@ -329,7 +340,9 @@ public class KeywordService {
      * @return Tier 1 關鍵字列表
      */
     public List<String> getTier1Keywords() {
-        return new ArrayList<>(tier1Keywords.keySet());
+        return tierMap.getOrDefault(1, new ArrayList<>()).stream()
+                .map(Keyword::getName)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -337,7 +350,9 @@ public class KeywordService {
      * @return Tier 2 關鍵字列表
      */
     public List<String> getTier2Keywords() {
-        return new ArrayList<>(tier2Keywords.keySet());
+        return tierMap.getOrDefault(2, new ArrayList<>()).stream()
+                .map(Keyword::getName)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -345,7 +360,9 @@ public class KeywordService {
      * @return Tier 3 關鍵字列表
      */
     public List<String> getTier3Keywords() {
-        return new ArrayList<>(tier3Keywords.keySet());
+        return tierMap.getOrDefault(3, new ArrayList<>()).stream()
+                .map(Keyword::getName)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -354,7 +371,7 @@ public class KeywordService {
      * @return Keyword 物件
      */
     public Keyword getKeywordInfo(String keyword) {
-        return allKeywordsMap.get(keyword);
+        return keywordMap.get(keyword);
     }
 
     /**
@@ -421,25 +438,15 @@ public class KeywordService {
             return false;
         }
         
-        if (allKeywordsMap.containsKey(keyword)) {
+        if (keywordMap.containsKey(keyword)) {
             return false; // 已存在
         }
         
         Keyword kw = new Keyword(keyword, weight, tier);
-        allKeywordsMap.put(keyword, kw);
+        keywordMap.put(keyword, kw);
         
-        // 同時加入對應的層級 Map
-        switch (tier) {
-            case 1:
-                tier1Keywords.put(keyword, weight);
-                break;
-            case 2:
-                tier2Keywords.put(keyword, weight);
-                break;
-            case 3:
-                tier3Keywords.put(keyword, weight);
-                break;
-        }
+        // 加入對應的層級列表
+        tierMap.computeIfAbsent(tier, k -> new ArrayList<>()).add(kw);
         
         return true;
     }
@@ -451,26 +458,12 @@ public class KeywordService {
      * @return 是否更新成功
      */
     public boolean updateKeywordWeight(String keyword, double newWeight) {
-        Keyword kw = allKeywordsMap.get(keyword);
+        Keyword kw = keywordMap.get(keyword);
         if (kw == null) {
             return false;
         }
         
         kw.setWeight(newWeight);
-        
-        // 同步更新層級 Map
-        int tier = kw.getTier();
-        switch (tier) {
-            case 1:
-                tier1Keywords.put(keyword, newWeight);
-                break;
-            case 2:
-                tier2Keywords.put(keyword, newWeight);
-                break;
-            case 3:
-                tier3Keywords.put(keyword, newWeight);
-                break;
-        }
         
         return true;
     }
@@ -482,15 +475,15 @@ public class KeywordService {
     public Map<String, Object> getKeywordStatistics() {
         Map<String, Object> stats = new HashMap<>();
         
-        stats.put("totalKeywords", allKeywordsMap.size());
-        stats.put("tier1Count", tier1Keywords.size());
-        stats.put("tier2Count", tier2Keywords.size());
-        stats.put("tier3Count", tier3Keywords.size());
+        stats.put("totalKeywords", keywordMap.size());
+        stats.put("tier1Count", tierMap.getOrDefault(1, new ArrayList<>()).size());
+        stats.put("tier2Count", tierMap.getOrDefault(2, new ArrayList<>()).size());
+        stats.put("tier3Count", tierMap.getOrDefault(3, new ArrayList<>()).size());
         stats.put("stopWordsCount", stopWords.size());
         stats.put("translationsCount", keywordTranslations.size());
         
         // 平均權重
-        double avgWeight = allKeywordsMap.values().stream()
+        double avgWeight = keywordMap.values().stream()
                 .mapToDouble(Keyword::getWeight)
                 .average()
                 .orElse(0.0);
@@ -506,11 +499,9 @@ public class KeywordService {
         Map<String, Object> status = new HashMap<>();
         status.put("service", "KeywordService");
         status.put("status", "running");
-        status.put("keywordsLoaded", allKeywordsMap.size() > 0);
+        status.put("keywordsLoaded", keywordMap.size() > 0);
         status.put("timestamp", System.currentTimeMillis());
         
         return status;
     }
 }
-
-

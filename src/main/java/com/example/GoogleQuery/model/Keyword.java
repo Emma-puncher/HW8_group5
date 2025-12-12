@@ -10,6 +10,7 @@ public class Keyword {
     public double weight;            // 權重
     private double originalWeight;   // 原始權重（用於重置）
     private KeywordTier tier;        // 關鍵字分級（核心詞、次要詞、參考詞）
+    private int tierNumber;          // 分級數字（1, 2, 3）用於向後兼容
     private String category;         // 分類（例：環境、服務、設備）
     
     /**
@@ -21,12 +22,13 @@ public class Keyword {
         this.name = name;
         this.weight = weight;
         this.originalWeight = weight;
-        this.tier = determineTier(weight);
+        this.tier = KeywordTier.fromWeight(weight);
+        this.tierNumber = getTierAsNumber();
         this.category = "";
     }
     
     /**
-     * 完整建構子
+     * 建構子（含分類）
      * @param name 關鍵字名稱
      * @param weight 權重
      * @param category 分類
@@ -35,12 +37,66 @@ public class Keyword {
         this(name, weight);
         this.category = category;
     }
+
+    /**
+     * 建構子（含層級數字，用於向後兼容）
+     * @param name 關鍵字名稱
+     * @param weight 權重
+     * @param tierNumber 層級數字（1: 核心詞, 2: 次要詞, 3: 參考詞）
+     */
+    public Keyword(String name, double weight, int tierNumber) {
+        this.name = name;
+        this.weight = weight;
+        this.originalWeight = weight;
+        this.tierNumber = tierNumber;
+        this.tier = tierNumberToTier(tierNumber);
+        this.category = "";
+    }
+
+    /**
+     * 完整建構子
+     * @param name 關鍵字名稱
+     * @param weight 權重
+     * @param tier 關鍵字分級
+     */
+    public Keyword(String name, double weight, KeywordTier tier) {
+        this.name = name;
+        this.weight = weight;
+        this.originalWeight = weight;
+        this.tier = tier;
+        this.tierNumber = getTierAsNumber();
+        this.category = "";
+    }
+
+    /**
+     * 將層級數字轉換為 KeywordTier
+     */
+    private KeywordTier tierNumberToTier(int tierNumber) {
+        switch (tierNumber) {
+            case 1: return KeywordTier.CORE;
+            case 2: return KeywordTier.SECONDARY;
+            case 3: return KeywordTier.REFERENCE;
+            default: return KeywordTier.fromWeight(weight);
+        }
+    }
+
+    /**
+     * 將 KeywordTier 轉換為數字
+     */
+    private int getTierAsNumber() {
+        switch (tier) {
+            case CORE: return 1;
+            case SECONDARY: return 2;
+            case REFERENCE: return 3;
+            default: return 3;
+        }
+    }
     
     /**
      * 根據權重判斷關鍵字分級
      * @param weight 權重
      * @return 關鍵字分級
-     */
+    
     private KeywordTier determineTier(double weight) {
         if (weight >= 2.0) {
             return KeywordTier.CORE;        // 核心詞：2.0 - 3.0
@@ -50,15 +106,43 @@ public class Keyword {
             return KeywordTier.REFERENCE;   // 參考詞：0.5 - 1.0
         }
     }
+    */
     
+    // ========== Getters and Setters ==========
+
     /**
-     * 重置權重為原始值
-     * 用於搜尋後恢復權重，避免累積效應
+     * 取得關鍵字名稱
      */
-    public void resetWeight() {
-        this.weight = this.originalWeight;
+    public String getName() {
+        return name;
     }
     
+    /**
+     * 設定關鍵字名稱
+     */
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    /**
+     * 取得權重
+     */
+    public double getWeight() {
+        return weight;
+    }
+    
+    /**
+     * 設定權重
+     */
+    public void setWeight(double weight) {
+        this.weight = weight;
+        // 權重改變時，可能需要重新判斷層級
+        if (this.tier == null) {
+            this.tier = KeywordTier.fromWeight(weight);
+            this.tierNumber = getTierAsNumber();
+        }
+    }
+
     /**
      * 取得原始權重
      * @return 原始權重
@@ -76,11 +160,19 @@ public class Keyword {
     }
     
     /**
-     * 取得關鍵字分級
+     * 取得關鍵字分級（枚舉）
      * @return 關鍵字分級
      */
     public KeywordTier getTier() {
         return tier;
+    }
+
+    /**
+     * 取得關鍵字分級（數字）
+     * @return 1: 核心詞, 2: 次要詞, 3: 參考詞
+     */
+    public int getTierNumber() {
+        return tierNumber;
     }
     
     /**
@@ -89,6 +181,15 @@ public class Keyword {
      */
     public void setTier(KeywordTier tier) {
         this.tier = tier;
+        this.tierNumber = getTierAsNumber();
+    }
+
+    /**
+     * 設定關鍵字分級（數字）
+     */
+    public void setTierNumber(int tierNumber) {
+        this.tierNumber = tierNumber;
+        this.tier = tierNumberToTier(tierNumber);
     }
     
     /**
@@ -105,6 +206,16 @@ public class Keyword {
      */
     public void setCategory(String category) {
         this.category = category;
+    }
+
+    // ========== 便利方法 ==========
+
+    /**
+     * 重置權重為原始值
+     * 用於搜尋後恢復權重，避免累積效應
+    */
+    public void resetWeight() {
+        this.weight = this.originalWeight;
     }
     
     /**
@@ -165,8 +276,8 @@ public class Keyword {
      */
     public String toJson() {
         return String.format(
-            "{\"name\": \"%s\", \"weight\": %.2f, \"tier\": \"%s\", \"category\": \"%s\"}",
-            name, weight, tier, category
+            "{\"name\": \"%s\", \"weight\": %.2f, \"tier\": \"%s\", \"tierNumber\": %d, \"category\": \"%s\"}",
+            name, weight, tier, tierNumber, category
         );
     }
     
