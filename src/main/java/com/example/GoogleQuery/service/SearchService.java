@@ -36,7 +36,7 @@ public class SearchService {
 
     private SearchEngine searchEngine;
     private List<Cafe> allCafes;
-    private Map<String, WebPage> cafeWebPages;
+    private Map<String, Cafe> cafeMap; // 以 cafeId 為鍵的咖啡廳映射
 
     /**
      * 初始化：載入咖啡廳資料和建立 WebPage
@@ -48,11 +48,17 @@ public class SearchService {
             loadCafesData();
             
             // 建立 WebPage 物件
-            createWebPages();
+            // createWebPages();
             
             // 初始化搜尋引擎
             searchEngine = new SearchEngine(keywordService, rankingService);
             
+            // ✅ 直接將 Cafe 當作 WebPage 使用（因為 Cafe extends WebPage）
+            ArrayList<WebPage> webPages = new ArrayList<>(allCafes);
+            for (WebPage page : webPages) {
+                searchEngine.addPage(page);
+            }
+
             System.out.println("SearchService 初始化完成：已載入 " + allCafes.size() + " 家咖啡廳");
             
         } catch (Exception e) {
@@ -73,11 +79,14 @@ public class SearchService {
         if (allCafes == null) {
             allCafes = new ArrayList<>();
         }
+
+        cafeMap = allCafes.stream()
+                .collect(Collectors.toMap(Cafe::getId, cafe -> cafe));
     }
 
     /**
      * 建立 WebPage 物件
-     */
+    
     private void createWebPages() {
         cafeWebPages = new HashMap<>();
         
@@ -91,7 +100,7 @@ public class SearchService {
 
     /**
      * 建立咖啡廳的搜尋內容（組合所有相關資訊）
-     */
+     
     private String buildCafeContent(Cafe cafe) {
         StringBuilder content = new StringBuilder();
         
@@ -102,7 +111,7 @@ public class SearchService {
         
         // 加入功能特性
         if (cafe.getFeatures() != null) {
-            for (String feature : cafe.getFeatures()) {
+            for (String feature : cafe.getFeature()) {
                 content.append(feature).append(" ");
             }
         }
@@ -116,6 +125,7 @@ public class SearchService {
         
         return content.toString();
     }
+    */
 
     /**
      * 基本搜尋
@@ -129,11 +139,11 @@ public class SearchService {
 
         try {
             // 使用搜尋引擎進行搜尋
-            ArrayList<WebPage> webPages = new ArrayList<>(cafeWebPages.values());
+            ArrayList<WebPage> webPages = new ArrayList<>(allCafes);
             ArrayList<SearchResult> results = searchEngine.search(keyword, webPages);
             
             // 補充咖啡廳詳細資訊
-            enrichSearchResults(results);
+            // enrichSearchResults(results);
             
             return results;
             
@@ -149,7 +159,7 @@ public class SearchService {
      * @param districts 地區列表
      * @param features 功能列表
      * @return 搜尋結果列表
-     */
+    
     public ArrayList<SearchResult> advancedSearch(
             String keyword,
             List<String> districts,
@@ -175,7 +185,7 @@ public class SearchService {
 
     /**
      * 補充搜尋結果的咖啡廳詳細資訊
-     */
+    
     private void enrichSearchResults(ArrayList<SearchResult> results) {
         for (SearchResult result : results) {
             Cafe cafe = findCafeByUrl(result.getUrl());
@@ -183,14 +193,16 @@ public class SearchService {
                 result.setCafeId(cafe.getId());
                 result.setDistrict(cafe.getDistrict());
                 result.setAddress(cafe.getAddress());
-                result.setFeatures(cafe.getFeatures());
+                result.setFeatures(cafe.getFeature());
                 result.setTags(cafe.getTags());
                 result.setRating(cafe.getRating());
-                result.setPhoneNumber(cafe.getPhoneNumber());
-                result.setOpeningHours(cafe.getOpeningHours());
+                result.setPhoneNumber(cafe.getPhone());
+            } else {
+                System.err.println("找不到對應的咖啡廳，URL: " + result.getUrl());
             }
         }
     }
+    */
 
     /**
      * 根據 URL 找咖啡廳
@@ -208,21 +220,18 @@ public class SearchService {
      * @return SearchResult 物件
      */
     public SearchResult getCafeById(String cafeId) {
-        Cafe cafe = allCafes.stream()
-                .filter(c -> c.getId().equals(cafeId))
-                .findFirst()
-                .orElse(null);
+        Cafe cafe = cafeMap.get(cafeId);
         
         if (cafe == null) {
             return null;
         }
         
-        return convertCafeToSearchResult(cafe);
+        return new SearchResult(cafe, 0.0);
     }
 
     /**
      * 將 Cafe 轉換為 SearchResult
-     */
+    
     private SearchResult convertCafeToSearchResult(Cafe cafe) {
         WebPage webPage = cafeWebPages.get(cafe.getId());
         
@@ -235,11 +244,10 @@ public class SearchService {
         result.setCafeId(cafe.getId());
         result.setDistrict(cafe.getDistrict());
         result.setAddress(cafe.getAddress());
-        result.setFeatures(cafe.getFeatures());
+        result.setFeatures(cafe.getFeature());
         result.setTags(cafe.getTags());
         result.setRating(cafe.getRating());
-        result.setPhoneNumber(cafe.getPhoneNumber());
-        result.setOpeningHours(cafe.getOpeningHours());
+        result.setPhoneNumber(cafe.getPhone());
         
         if (webPage != null) {
             result.setPreview(googleService.getContentPreview(webPage, 200));
@@ -252,14 +260,14 @@ public class SearchService {
      * 獲取搜尋建議（自動完成）
      * @param query 查詢字串
      * @return 建議關鍵字列表
-     */
+    
     public List<String> getSearchSuggestions(String query) {
         if (query == null || query.length() < 2) {
             return new ArrayList<>();
         }
         
         // 從所有關鍵字中找出匹配的
-        List<String> allKeywords = keywordService.getAllKeywords();
+        List<String> allKeywords = keywordService.getAllKeywordsName();
         
         return allKeywords.stream()
                 .filter(keyword -> keyword.contains(query))
@@ -271,7 +279,7 @@ public class SearchService {
      * 依地區搜尋
      * @param district 地區名稱
      * @return 該地區的所有咖啡廳
-     */
+    
     public ArrayList<SearchResult> searchByDistrict(String district) {
         List<Cafe> cafesInDistrict = allCafes.stream()
                 .filter(cafe -> cafe.getDistrict().equals(district))
@@ -292,7 +300,7 @@ public class SearchService {
      * 依功能特性搜尋
      * @param feature 功能特性
      * @return 符合該特性的咖啡廳
-     */
+    
     public ArrayList<SearchResult> searchByFeature(String feature) {
         List<Cafe> cafesWithFeature = allCafes.stream()
                 .filter(cafe -> cafe.getFeatures() != null && 
@@ -313,7 +321,7 @@ public class SearchService {
     /**
      * 獲取所有咖啡廳
      * @return 所有咖啡廳列表
-     */
+    
     public List<Cafe> getAllCafes() {
         return new ArrayList<>(allCafes);
     }
@@ -321,7 +329,7 @@ public class SearchService {
     /**
      * 獲取所有地區
      * @return 地區列表
-     */
+    
     public List<String> getAllDistricts() {
         return allCafes.stream()
                 .map(Cafe::getDistrict)
@@ -333,7 +341,7 @@ public class SearchService {
     /**
      * 獲取所有功能特性
      * @return 功能特性列表
-     */
+    
     public List<String> getAllFeatures() {
         Set<String> features = new HashSet<>();
         
@@ -350,7 +358,7 @@ public class SearchService {
      * 搜尋統計資訊
      * @param keyword 搜尋關鍵字
      * @return 統計資訊
-     */
+    
     public Map<String, Object> getSearchStatistics(String keyword) {
         Map<String, Object> stats = new HashMap<>();
         
@@ -380,7 +388,7 @@ public class SearchService {
 
     /**
      * 重新載入資料
-     */
+    
     public void reloadData() {
         try {
             loadCafesData();
@@ -393,7 +401,7 @@ public class SearchService {
 
     /**
      * 檢查服務狀態
-     */
+    
     public Map<String, Object> getServiceStatus() {
         Map<String, Object> status = new HashMap<>();
         status.put("service", "SearchService");
@@ -404,6 +412,7 @@ public class SearchService {
         
         return status;
     }
+    */
 }
 
 

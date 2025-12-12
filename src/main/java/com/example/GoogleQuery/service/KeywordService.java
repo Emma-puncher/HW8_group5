@@ -305,6 +305,14 @@ public class KeywordService {
     }
 
     /**
+     * 獲取所有關鍵字的字串型態
+     * @return 所有關鍵字列表
+     */
+    public List<String> getAllKeywordsName() {
+        return new ArrayList<>(allKeywordsMap.keySet());
+    }
+
+    /**
      * 獲取指定層級的關鍵字
      * @param tier 層級 (1, 2, 3)
      * @return 該層級的關鍵字列表

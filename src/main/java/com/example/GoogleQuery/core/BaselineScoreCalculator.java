@@ -263,7 +263,7 @@ public class BaselineScoreCalculator {
             System.out.printf("【%d】%s\n", i + 1, page.getName());
             System.out.printf("    基準分數: %.2f\n", page.getScore());
             System.out.printf("    地區: %s\n", page.getDistrict());
-            System.out.printf("    特色: %s\n", page.getCategory());
+            System.out.printf("    特色: %s\n", page.getFeatures());
             System.out.println();
         }
         

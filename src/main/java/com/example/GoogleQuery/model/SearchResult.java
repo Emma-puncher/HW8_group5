@@ -1,5 +1,7 @@
 package com.example.GoogleQuery.model;
 
+import java.util.List;
+
 /**
  * SearchResult - 搜尋結果封裝類別
  * 將 WebPage 和其對應的分數包裝在一起
@@ -8,6 +10,14 @@ public class SearchResult implements Comparable<SearchResult> {
     
     private WebPage page;
     private double score;
+
+    // 額外的咖啡廳資訊（用於 API 回傳）
+    private String cafeId;
+    private String phoneNumber;
+    private String openingHours;
+    private double rating;
+    private List<String> features;
+    private List<String> tags;
     
     /**
      * 建構子
@@ -18,7 +28,20 @@ public class SearchResult implements Comparable<SearchResult> {
         this.page = page;
         this.score = score;
     }
+
+    /**
+     * 建構子（含 URL 和名稱）
+     * @param url URL
+     * @param name 名稱
+     * @param score 分數
+     */
+    public SearchResult(String url, String name, double score) {
+        this.page = new WebPage(url, name);
+        this.score = score;
+    }
     
+    // ========== 基本 Getters and Setters ==========
+
     /**
      * 取得網站
      * @return WebPage 物件
@@ -43,11 +66,21 @@ public class SearchResult implements Comparable<SearchResult> {
         this.score = score;
     }
     
+    // ========== WebPage 的便利方法 ==========
+
     /**
      * 取得網站名稱（便利方法）
      * @return 名稱
      */
     public String getName() {
+        return page.getName();
+    }
+
+    /**
+     * 取得標題（別名）
+     * @return 標題
+     */
+    public String getTitle() {
         return page.getName();
     }
     
@@ -82,15 +115,17 @@ public class SearchResult implements Comparable<SearchResult> {
     public String getDistrict() {
         return page.getDistrict();
     }
-    
+
     /**
-     * 取得分類（便利方法）
-     * @return 分類
+     * 設定地區
+     * @param district 地區
      */
-    public String getFeatures() {
-        return page.getFeatures();
+    public void setDistrict(String district) {
+        // 如果需要更新 page 的地區，可以加上
+        // page.setDistrict(district);
+        // 或者不做任何事，因為 page 已經有地區資訊
     }
-    
+
     /**
      * 取得地址（便利方法）
      * @return 地址
@@ -100,30 +135,174 @@ public class SearchResult implements Comparable<SearchResult> {
     }
     
     /**
+     * 設定地址
+     * @param address 地址
+     */
+    public void setAddress(String address) {
+        // 同上
+    }
+
+    // ========== 咖啡廳特有資訊的 Getters and Setters ==========
+
+    /**
+     * 取得咖啡廳 ID
+     * @return 咖啡廳 ID
+     */
+    public String getCafeId() {
+        return cafeId;
+    }
+
+    /**
+     * 設定咖啡廳 ID
+     * @param cafeId 咖啡廳 ID
+     */
+    public void setCafeId(String cafeId) {
+        this.cafeId = cafeId;
+    }
+
+    /**
+     * 取得電話號碼
+     * @return 電話號碼
+     */
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    /**
+     * 設定電話號碼
+     * @param phoneNumber 電話號碼
+     */
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    /**
+     * 取得評分
+     * @return 評分
+     */
+    public double getRating() {
+        return rating;
+    }
+    
+    /**
+     * 設定評分
+     * @param rating 評分
+     */
+    public void setRating(double rating) {
+        this.rating = rating;
+    }
+
+    /**
+     * 取得功能列表
+     * @return 功能列表
+     */
+    public List<String> getFeatures() {
+        if (features != null) {
+            return features;
+        }
+        return page.getFeatures();
+    }
+
+    /**
+     * 設定功能列表
+     * @param features 功能列表
+     */
+    public void setFeatures(List<String> features) {
+        this.features = features;
+    }
+
+    /**
+     * 取得標籤列表
+     * @return 標籤列表
+     */
+    public List<String> getTags() {
+        if (tags != null) {
+            return tags;
+        }
+        return page.getTags();
+    }
+    
+    /**
+     * 設定標籤列表
+     * @param tags 標籤列表
+     */
+    public void setTags(List<String> tags) {
+        this.tags = tags;
+    }
+
+    /**
+     * 設定正規化分數
+     * @param normalizedScore 正規化分數
+     */
+    public void setNormalizedScore(double normalizedScore) {
+        // 可以用於儲存 0-100 的正規化分數
+        this.score = normalizedScore;
+    }
+    
+    /**
+     * 設定推薦分數
+     * @param recommendationScore 推薦分數
+     */
+    public void setRecommendationScore(double recommendationScore) {
+        // 用於推薦系統
+        this.score = recommendationScore;
+    }
+
+    // ========== JSON 和顯示方法 ==========
+    
+    /**
      * 轉換為 JSON 格式字串（用於 API 回傳）
      * @return JSON 字串
      */
     public String toJson() {
-        return String.format(
-            "{" +
-            "\"name\": \"%s\", " +
-            "\"url\": \"%s\", " +
-            "\"score\": %.2f, " +
-            "\"hashtags\": \"%s\", " +
-            "\"preview\": \"%s\", " +
-            "\"district\": \"%s\", " +
-            "\"category\": \"%s\", " +
-            "\"address\": \"%s\"" +
-            "}",
-            escapeJson(page.getName()),
-            escapeJson(page.getUrl()),
-            score,
-            escapeJson(page.getHashtags()),
-            escapeJson(page.getPreview()),
-            escapeJson(page.getDistrict()),
-            escapeJson(page.getFeatures()),
-            escapeJson(page.getAddress())
-        );
+        StringBuilder json = new StringBuilder("{");
+        
+        // 基本資訊
+        json.append("\"cafeId\": \"").append(escapeJson(cafeId)).append("\", ");
+        json.append("\"name\": \"").append(escapeJson(getName())).append("\", ");
+        json.append("\"url\": \"").append(escapeJson(getUrl())).append("\", ");
+        json.append("\"score\": ").append(String.format("%.2f", score)).append(", ");
+        
+        // 地理資訊
+        json.append("\"district\": \"").append(escapeJson(getDistrict())).append("\", ");
+        json.append("\"address\": \"").append(escapeJson(getAddress())).append("\", ");
+        
+        // 聯絡資訊
+        json.append("\"phoneNumber\": \"").append(escapeJson(phoneNumber)).append("\", ");
+        json.append("\"openingHours\": \"").append(escapeJson(openingHours)).append("\", ");
+        json.append("\"rating\": ").append(rating).append(", ");
+        
+        // 其他資訊
+        json.append("\"hashtags\": \"").append(escapeJson(getHashtags())).append("\", ");
+        json.append("\"preview\": \"").append(escapeJson(getPreview())).append("\", ");
+        
+        // 功能和標籤
+        json.append("\"features\": ").append(listToJson(getFeatures())).append(", ");
+        json.append("\"tags\": ").append(listToJson(getTags()));
+        
+        json.append("}");
+        
+        return json.toString();
+    }
+    
+    /**
+     * 將 List 轉換為 JSON 陣列字串
+     */
+    private String listToJson(List<String> list) {
+        if (list == null || list.isEmpty()) {
+            return "[]";
+        }
+        
+        StringBuilder json = new StringBuilder("[");
+        for (int i = 0; i < list.size(); i++) {
+            json.append("\"").append(escapeJson(list.get(i))).append("\"");
+            if (i < list.size() - 1) {
+                json.append(", ");
+            }
+        }
+        json.append("]");
+        
+        return json.toString();
     }
     
     /**
@@ -134,17 +313,20 @@ public class SearchResult implements Comparable<SearchResult> {
     public String toString() {
         return String.format(
             "【%s】\n" +
-            "  分數: %.2f | 標籤: %s\n" +
-            "  地區: %s | 分類: %s\n" +
+            "  分數: %.2f | 評分: %.1f★\n" +
+            "  地區: %s | 標籤: %s\n" +
             "  地址: %s\n" +
+            "  電話: %s | 營業時間: %s\n" +
             "  網址: %s",
-            page.getName(),
+            getName(),
             score,
-            page.getHashtags(),
-            page.getDistrict(),
-            page.getFeatures(),
-            page.getAddress(),
-            page.getUrl()
+            rating,
+            getDistrict(),
+            getHashtags(),
+            getAddress(),
+            phoneNumber != null ? phoneNumber : "未提供",
+            openingHours != null ? openingHours : "未提供",
+            getUrl()
         );
     }
     

@@ -474,7 +474,7 @@ public class SearchEngine {
             System.out.printf("【%d】%s\n", i + 1, page.getName());
             System.out.printf("    分數: %.2f\n", result.getScore());
             System.out.printf("    標籤: %s\n", page.getHashtags());
-            System.out.printf("    地區: %s | 分類: %s\n", page.getDistrict(), page.getCategory());
+            System.out.printf("    地區: %s | 分類: %s\n", page.getDistrict(), page.getFeatures());
             System.out.printf("    地址: %s\n", page.getAddress());
             System.out.printf("    網址: %s\n", page.getUrl());
             System.out.println();
