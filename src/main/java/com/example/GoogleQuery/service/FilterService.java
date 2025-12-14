@@ -1,6 +1,7 @@
 package com.example.GoogleQuery.service;
 
 import com.example.GoogleQuery.model.Cafe;
+import com.example.GoogleQuery.repository.CafeRepository;
 import com.example.GoogleQuery.model.SearchResult;
 import com.example.GoogleQuery.filter.DistrictFilter;
 import com.example.GoogleQuery.filter.FeatureFilter;
@@ -9,6 +10,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import jakarta.annotation.PostConstruct;
 import java.io.IOException;
@@ -45,6 +47,76 @@ public class FilterService {
             System.err.println("FilterService 初始化失敗: " + e.getMessage());
             initializeDefaultConfig();
         }
+    }
+
+    @Autowired
+    private CafeRepository cafeRepository;
+
+    /**
+     * 兼容性方法：回傳所有地區
+     */
+    public List<String> getAllDistricts() {
+        if (availableDistricts != null && !availableDistricts.isEmpty()) {
+            return getAvailableDistricts();
+        }
+        return cafeRepository != null ? cafeRepository.findAllDistricts() : new ArrayList<>();
+    }
+
+    /**
+     * 兼容性方法：回傳所有功能
+     */
+    public List<String> getAllFeatures() {
+        if (availableFeatures != null && !availableFeatures.isEmpty()) {
+            return getAvailableFeatures();
+        }
+        return cafeRepository != null ? cafeRepository.findAllFeatures() : new ArrayList<>();
+    }
+
+    public int getCafeCountByDistrict(String district) {
+        if (cafeRepository == null) return 0;
+        return cafeRepository.findByDistrict(district).size();
+    }
+
+    public int getCafeCountByFeature(String feature) {
+        if (cafeRepository == null) return 0;
+        return cafeRepository.findByFeature(feature).size();
+    }
+
+    public boolean validateFilters(Map<String, Object> filterData) {
+        if (filterData == null) return true;
+        if (filterData.containsKey("districts")) {
+            @SuppressWarnings("unchecked")
+            List<String> districts = (List<String>) filterData.get("districts");
+            List<String> valid = validateDistricts(districts);
+            if (valid.size() != (districts == null ? 0 : districts.size())) return false;
+        }
+        if (filterData.containsKey("features")) {
+            @SuppressWarnings("unchecked")
+            List<String> features = (List<String>) filterData.get("features");
+            List<String> valid = validateFeatures(features);
+            if (valid.size() != (features == null ? 0 : features.size())) return false;
+        }
+        return true;
+    }
+
+    public Map<String, Integer> getDistrictStatistics() {
+        Map<String, Integer> stats = new HashMap<>();
+        if (cafeRepository == null) return stats;
+        Map<String, Long> raw = cafeRepository.countByDistrict();
+        for (Map.Entry<String, Long> e : raw.entrySet()) {
+            stats.put(e.getKey(), e.getValue().intValue());
+        }
+        return stats;
+    }
+
+    public Map<String, Integer> getFeatureStatistics() {
+        Map<String, Integer> stats = new HashMap<>();
+        if (cafeRepository == null) return stats;
+        Map<String, Long> raw = cafeRepository.countByFeature();
+        for (Map.Entry<String, Long> e : raw.entrySet()) {
+            stats.put(e.getKey(), e.getValue().intValue());
+        }
+        return stats;
     }
 
     /**

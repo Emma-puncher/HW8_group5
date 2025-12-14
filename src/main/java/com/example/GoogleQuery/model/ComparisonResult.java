@@ -37,6 +37,80 @@ public class ComparisonResult {
             disadvantages.put(cafe.getId(), new ArrayList<>());
         }
     }
+
+    /**
+     * 無參數建構子（向後相容）
+     */
+    public ComparisonResult() {
+        this.cafes = new ArrayList<>();
+        this.comparison = new HashMap<>();
+        this.advantages = new HashMap<>();
+        this.disadvantages = new HashMap<>();
+        this.recommendation = "";
+        this.timestamp = System.currentTimeMillis();
+    }
+
+    // Compatibility setters used by ComparisonService (accept SearchResult lists)
+    public void setCafes(List<SearchResult> searchResults) {
+        if (searchResults == null) {
+            this.cafes = new ArrayList<>();
+            return;
+        }
+
+        List<Cafe> converted = new ArrayList<>();
+        for (SearchResult sr : searchResults) {
+            String id = sr.getCafeId() != null && !sr.getCafeId().isEmpty() ? sr.getCafeId() : java.util.UUID.randomUUID().toString();
+            String name = sr.getName() != null ? sr.getName() : "";
+            String url = sr.getUrl() != null ? sr.getUrl() : "";
+            String district = sr.getDistrict() != null ? sr.getDistrict() : "";
+            String address = sr.getAddress() != null ? sr.getAddress() : "";
+
+            Cafe c = new Cafe(id, name, url, district, address);
+            c.setRating(sr.getRating());
+            c.setBaselineScore(sr.getScore());
+            if (sr.getFeatures() != null) {
+                c.setImages(new ArrayList<>());
+            }
+            converted.add(c);
+        }
+
+        this.cafes = converted;
+    }
+
+    public void setBasicComparison(Map<String, List<String>> basic) {
+        // convert basic comparisons into internal comparison map under key "basic"
+        Map<String, Object> map = new HashMap<>();
+        for (Map.Entry<String, List<String>> e : basic.entrySet()) {
+            map.put(e.getKey(), e.getValue());
+        }
+        this.comparison.put("basic", map);
+    }
+
+    public void setFeatureComparison(Map<String, List<Boolean>> featureComparison) {
+        // store under key "feature"
+        Map<String, Object> map = new HashMap<>();
+        for (Map.Entry<String, List<Boolean>> e : featureComparison.entrySet()) {
+            map.put(e.getKey(), e.getValue());
+        }
+        this.comparison.put("feature", map);
+    }
+
+    public void setProsAndCons(List<Map<String, List<String>>> prosAndCons) {
+        // flatten into advantages/disadvantages if possible
+        if (prosAndCons == null) return;
+        for (int i = 0; i < prosAndCons.size(); i++) {
+            Map<String, List<String>> m = prosAndCons.get(i);
+            String cafeId = (i < cafes.size()) ? cafes.get(i).getId() : "cafe_" + i;
+            advantages.put(cafeId, m.getOrDefault("pros", new ArrayList<>()));
+            disadvantages.put(cafeId, m.getOrDefault("cons", new ArrayList<>()));
+        }
+    }
+
+    public void setSummary(String summary) {
+        // put into recommendation as well for compatibility
+        this.recommendation = summary != null ? summary : this.recommendation;
+    }
+    
     
     // ========== Getters and Setters ==========
     

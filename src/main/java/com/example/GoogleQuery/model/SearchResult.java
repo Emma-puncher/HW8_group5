@@ -1,6 +1,7 @@
 package com.example.GoogleQuery.model;
 
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  * SearchResult - 搜尋結果封裝類別
@@ -18,6 +19,9 @@ public class SearchResult implements Comparable<SearchResult> {
     private double rating;
     private List<String> features;
     private List<String> tags;
+    private Integer userRatingsTotal;
+    private Double latitude;
+    private Double longitude;
     
     /**
      * 建構子
@@ -27,6 +31,19 @@ public class SearchResult implements Comparable<SearchResult> {
     public SearchResult(WebPage page, double score) {
         this.page = page;
         this.score = score;
+    }
+
+    /**
+     * 無參數建構子（向後相容）
+     */
+    public SearchResult() {
+        this.page = new WebPage("", "");
+        this.score = 0.0;
+        this.features = new ArrayList<>();
+        this.tags = new ArrayList<>();
+        this.userRatingsTotal = null;
+        this.latitude = null;
+        this.longitude = null;
     }
 
     /**
@@ -67,6 +84,14 @@ public class SearchResult implements Comparable<SearchResult> {
     }
     
     // ========== WebPage 的便利方法 ==========
+
+    /**
+     * 取得網站名稱（便利方法）
+     * @return 名稱
+     */
+    public void setName(String name) {
+        page.setName(name);
+    }
 
     /**
      * 取得網站名稱（便利方法）
@@ -121,9 +146,9 @@ public class SearchResult implements Comparable<SearchResult> {
      * @param district 地區
      */
     public void setDistrict(String district) {
-        // 如果需要更新 page 的地區，可以加上
-        // page.setDistrict(district);
-        // 或者不做任何事，因為 page 已經有地區資訊
+        if (this.page != null) {
+            this.page.setDistrict(district);
+        }
     }
 
     /**
@@ -139,7 +164,9 @@ public class SearchResult implements Comparable<SearchResult> {
      * @param address 地址
      */
     public void setAddress(String address) {
-        // 同上
+        if (this.page != null) {
+            this.page.setAddress(address);
+        }
     }
 
     // ========== 咖啡廳特有資訊的 Getters and Setters ==========
@@ -161,6 +188,21 @@ public class SearchResult implements Comparable<SearchResult> {
     }
 
     /**
+     * 相容方法：取得 ID（舊名 getId）
+     * @return id
+     */
+    public String getId() {
+        return getCafeId();
+    }
+
+    /**
+     * 相容方法：設定 ID（舊名 setId）
+     */
+    public void setId(String id) {
+        setCafeId(id);
+    }
+
+    /**
      * 取得電話號碼
      * @return 電話號碼
      */
@@ -174,6 +216,43 @@ public class SearchResult implements Comparable<SearchResult> {
      */
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
+    }
+
+    public Integer getUserRatingsTotal() {
+        return userRatingsTotal;
+    }
+
+    public void setUserRatingsTotal(Integer userRatingsTotal) {
+        this.userRatingsTotal = userRatingsTotal;
+    }
+
+    public Double getLatitude() {
+        if (latitude != null) return latitude;
+        return null;
+    }
+
+    public void setLatitude(Double latitude) {
+        this.latitude = latitude;
+    }
+
+    public Double getLongitude() {
+        return longitude;
+    }
+
+    public void setLongitude(Double longitude) {
+        this.longitude = longitude;
+    }
+
+    public String getOpeningHours() {
+        return openingHours;
+    }
+
+    public void setOpeningHours(String openingHours) {
+        this.openingHours = openingHours;
+    }
+
+    public void setPreview(String preview) {
+        if (page != null) page.setPreview(preview);
     }
 
     /**
@@ -246,6 +325,15 @@ public class SearchResult implements Comparable<SearchResult> {
     public void setRecommendationScore(double recommendationScore) {
         // 用於推薦系統
         this.score = recommendationScore;
+    }
+
+    /**
+     * 設定推薦分數
+     * @param recommendationScore 推薦分數
+     */
+    public double getRecommendationScore() {
+        // 用於推薦系統
+        return this.score;
     }
 
     // ========== JSON 和顯示方法 ==========

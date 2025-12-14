@@ -155,6 +155,29 @@ public class SearchService {
 
     /**
      * 進階搜尋（支援地區和功能篩選）
+     */
+    public ArrayList<SearchResult> advancedSearch(
+            String keyword,
+            List<String> districts,
+            List<String> features) {
+
+        ArrayList<SearchResult> results = search(keyword);
+
+        if (districts != null && !districts.isEmpty()) {
+            DistrictFilter districtFilter = new DistrictFilter(districts);
+            results = districtFilter.filter(results);
+        }
+
+        if (features != null && !features.isEmpty()) {
+            FeatureFilter featureFilter = new FeatureFilter(features);
+            results = featureFilter.filter(results);
+        }
+
+        return results;
+    }
+
+    /**
+     * 進階搜尋（支援地區和功能篩選）
      * @param keyword 搜尋關鍵字
      * @param districts 地區列表
      * @param features 功能列表
@@ -227,6 +250,109 @@ public class SearchService {
         }
         
         return new SearchResult(cafe, 0.0);
+    }
+
+    /**
+     * 獲取所有咖啡廳資料
+     * @return 所有咖啡廳列表
+     */
+    public List<Cafe> getAllCafes() {
+        return new ArrayList<>(cafeMap.values());
+    }
+
+    /**
+     * 獲取咖啡廳總數
+     * @return 咖啡廳數量
+     */
+    public int getCafeCount() {
+        return cafeMap.size();
+    }
+
+    /**
+     * 依地區搜尋咖啡廳
+     * @param district 地區名稱
+     * @return 該地區的咖啡廳列表
+     */
+    public ArrayList<SearchResult> searchByDistrict(String district) {
+        ArrayList<SearchResult> results = new ArrayList<>();
+        
+        for (Cafe cafe : cafeMap.values()) {
+            // 比對地區（忽略大小寫和空白）
+            if (cafe.getDistrict() != null && 
+                cafe.getDistrict().trim().equalsIgnoreCase(district.trim())) {
+                
+                SearchResult result = convertToSearchResult(cafe);
+                results.add(result);
+            }
+        }
+        
+        return results;
+    }
+
+    /**
+     * 將 Cafe 轉換為 SearchResult
+     * @param cafe 咖啡廳物件
+     * @return SearchResult 物件
+     */
+    private SearchResult convertToSearchResult(Cafe cafe) {
+        SearchResult result = new SearchResult();
+        result.setCafeId(cafe.getId());
+        result.setName(cafe.getName());
+        result.setDistrict(cafe.getDistrict());
+        result.setAddress(cafe.getAddress());
+        result.setRating(cafe.getRating());
+        result.setUserRatingsTotal(cafe.getUserRatingsTotal());
+        // ... 設定其他欄位
+        return result;
+    }
+
+    /**
+     * 獲取所有不重複的行政區列表
+     * @return 行政區列表（已排序）
+     */
+    public List<String> getAllDistricts() {
+        Set<String> districts = new HashSet<>();
+        
+        for (Cafe cafe : cafeMap.values()) {
+            if (cafe.getDistrict() != null && !cafe.getDistrict().trim().isEmpty()) {
+                districts.add(cafe.getDistrict().trim());
+            }
+        }
+        
+        // 轉為列表並排序
+        List<String> sortedDistricts = new ArrayList<>(districts);
+        Collections.sort(sortedDistricts);
+        
+        return sortedDistricts;
+    }
+
+    public ArrayList<SearchResult> searchByFeature(String feature) {
+        ArrayList<SearchResult> results = new ArrayList<>();
+        for (Cafe cafe : allCafes) {
+            if (cafe.getFeatures() != null && cafe.getFeatures().contains(feature)) {
+                results.add(convertToSearchResult(cafe));
+            }
+        }
+
+        results.sort((a, b) -> Double.compare(b.getScore(), a.getScore()));
+        return results;
+    }
+
+    public List<String> getAllFeatures() {
+        Set<String> featuresSet = new HashSet<>();
+        for (Cafe cafe : allCafes) {
+            if (cafe.getFeatures() != null) featuresSet.addAll(cafe.getFeatures());
+        }
+        return new ArrayList<>(featuresSet);
+    }
+
+    public List<String> getSearchSuggestions(String query) {
+        if (query == null || query.length() < 2) return new ArrayList<>();
+        List<String> allKeywords = keywordService.getAllKeywordsName();
+        return allKeywords.stream()
+                .filter(k -> k.contains(query))
+                .limit(10)
+                .collect(Collectors.toList());
     }
 
     /**

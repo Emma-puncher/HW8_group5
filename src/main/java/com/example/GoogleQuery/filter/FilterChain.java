@@ -163,4 +163,11 @@ public class FilterChain implements Filter {
     public boolean isEmpty() {
         return filters.isEmpty();
     }
+
+    /**
+     * 兼容性方法：apply 為 filter 的別名
+     */
+    public ArrayList<SearchResult> apply(ArrayList<SearchResult> results) {
+        return filter(results);
+    }
 }

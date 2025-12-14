@@ -130,6 +130,14 @@ public class Cafe extends WebPage {
     public int getReviewCount() {
         return reviewCount;
     }
+
+    /**
+     * 向後相容：回傳使用者評分總數
+     * @return 使用者評分總數
+     */
+    public int getUserRatingsTotal() {
+        return reviewCount;
+    }
     
     public void setReviewCount(int reviewCount) {
         this.reviewCount = Math.max(0, reviewCount);
@@ -254,7 +262,7 @@ public class Cafe extends WebPage {
      * 取得所有功能標籤（別名方法，用於相容性）
      * @return 功能標籤列表
      */
-    public List<String> getFeature() {
+    public List<String> getFeatures() {
         return getFeatureTags();
     }
     

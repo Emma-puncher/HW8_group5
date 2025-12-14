@@ -51,7 +51,7 @@ public class ComparisonController {
             }
             
             // 執行比較
-            ComparisonResult comparisonResult = comparisonService.compareCafes(cafeIds);
+            ComparisonResult comparisonResult = comparisonService.compareCafesByIds(cafeIds);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -154,7 +154,7 @@ public class ComparisonController {
                                      .body(errorResponse);
             }
             
-            Map<String, Object> summary = comparisonService.generateComparisonSummary(cafeIds);
+            Map<String, Object> summary = comparisonService.generateComparisonSummaryForIds(cafeIds);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);

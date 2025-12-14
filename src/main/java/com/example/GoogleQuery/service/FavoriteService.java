@@ -115,6 +115,69 @@ public class FavoriteService {
         return cafes;
     }
 
+    // Compatibility: controller-facing methods
+    public ArrayList<SearchResult> getFavoriteDetails(List<String> cafeIds) {
+        return getCafesByIds(cafeIds);
+    }
+
+    public boolean cafeExists(String cafeId) {
+        return searchService.getCafeById(cafeId) != null;
+    }
+
+    public Map<String, List<String>> validateBatchCafeIds(List<String> cafeIds) {
+        Map<String, List<String>> res = new HashMap<>();
+        List<String> valid = new ArrayList<>();
+        List<String> invalid = new ArrayList<>();
+        for (String id : cafeIds) {
+            if (searchService.getCafeById(id) != null) valid.add(id);
+            else invalid.add(id);
+        }
+        res.put("valid", valid);
+        res.put("invalid", invalid);
+        return res;
+    }
+
+    public List<SearchResult> getRecommendationsBasedOnFavorites(List<String> favoriteIds, int limit) {
+        ArrayList<SearchResult> favorites = getCafesByIds(favoriteIds);
+        if (favorites.isEmpty()) return new ArrayList<>();
+
+        // re-use recommendSimilarCafes logic but using provided favorites
+        Map<String, Integer> featureScores = new HashMap<>();
+        Set<String> favoriteDistricts = new HashSet<>();
+        for (SearchResult f : favorites) {
+            favoriteDistricts.add(f.getDistrict());
+            if (f.getFeatures() != null) {
+                for (String feature : f.getFeatures()) {
+                    featureScores.put(feature, featureScores.getOrDefault(feature, 0) + 1);
+                }
+            }
+        }
+
+        List<SearchResult> all = searchService.getAllCafes().stream()
+                .map(c -> searchService.getCafeById(c.getId()))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        Set<String> favoriteIdSet = favorites.stream()
+                .map(SearchResult::getCafeId)
+                .collect(Collectors.toSet());
+
+        return all.stream()
+                .filter(c -> !favoriteIdSet.contains(c.getCafeId()))
+                .map(c -> {
+                    int score = 0;
+                    if (favoriteDistricts.contains(c.getDistrict())) score += 3;
+                    if (c.getFeatures() != null) {
+                        for (String f : c.getFeatures()) score += featureScores.getOrDefault(f, 0);
+                    }
+                    c.setRecommendationScore((double) score);
+                    return c;
+                })
+                .sorted((a, b) -> Double.compare(b.getRecommendationScore(), a.getRecommendationScore()))
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+
     /**
      * 清除使用者的所有收藏
      * @param userId 使用者 ID
@@ -249,6 +312,53 @@ public class FavoriteService {
     }
 
     /**
+     * 依據指定的咖啡廳 ID 列表計算統計資訊
+     */
+    public Map<String, Object> getFavoriteStatistics(List<String> cafeIds) {
+        Map<String, Object> stats = new HashMap<>();
+
+        ArrayList<SearchResult> favorites = getCafesByIds(cafeIds);
+
+        stats.put("totalFavorites", favorites.size());
+
+        if (favorites.isEmpty()) {
+            return stats;
+        }
+
+        // 地區分布
+        Map<String, Long> districtCounts = favorites.stream()
+                .collect(Collectors.groupingBy(
+                    SearchResult::getDistrict,
+                    Collectors.counting()
+                ));
+        stats.put("districtDistribution", districtCounts);
+
+        double avgRating = favorites.stream()
+                .filter(f -> f.getRating() > 0)
+                .mapToDouble(SearchResult::getRating)
+                .average()
+                .orElse(0.0);
+        stats.put("averageRating", avgRating);
+
+        Map<String, Long> featureCounts = new HashMap<>();
+        for (SearchResult favorite : favorites) {
+            if (favorite.getFeatures() != null) {
+                for (String feature : favorite.getFeatures()) {
+                    featureCounts.put(feature, featureCounts.getOrDefault(feature, 0L) + 1);
+                }
+            }
+        }
+        stats.put("topFeatures", featureCounts.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .limit(5)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList())
+        );
+
+        return stats;
+    }
+
+    /**
      * 推薦相似的咖啡廳（基於收藏的咖啡廳）
      * @param userId 使用者 ID
      * @param limit 推薦數量
@@ -327,6 +437,17 @@ public class FavoriteService {
         }
         
         return "[\"" + String.join("\",\"", favoriteIds) + "\"]";
+    }
+
+    /**
+     * 兼容：依據 ID 列表匯出收藏資料
+     */
+    public Map<String, Object> exportFavorites(List<String> cafeIds) {
+        Map<String, Object> out = new HashMap<>();
+        out.put("ids", cafeIds);
+        out.put("count", cafeIds == null ? 0 : cafeIds.size());
+        out.put("export", cafeIds == null ? "[]" : "[\"" + String.join("\",\"", cafeIds) + "\"]");
+        return out;
     }
 
     /**

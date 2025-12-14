@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Repository;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
@@ -370,8 +370,8 @@ public class KeywordRepository {
         if (criteria.containsKey("tier")) {
             int tier = (Integer) criteria.get("tier");
             results = results.stream()
-                    .filter(kw -> kw.getTier() == tier)
-                    .collect(Collectors.toList());
+                .filter(kw -> kw.getTierNumber() == tier)
+                .collect(Collectors.toList());
         }
         
         // 最低權重篩選

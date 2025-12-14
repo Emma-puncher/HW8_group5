@@ -27,6 +27,7 @@ public class WebPage {
     private String preview;               // 預覽文字（前 150-200 字）
     private String district;              // 地區（例：大安區、中山區）
     private String feature;              // 分類（例：不限時、有插座、寵物友善）
+    private List<String> featuresList;     // 分類列表
     private String address;               // 地址
     private List<String> tags;            // 標籤列表
     
@@ -123,6 +124,14 @@ public class WebPage {
      * 取得名稱
      * @return 名稱
      */
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    /**
+     * 取得名稱
+     * @return 名稱
+     */
     public String getName() {
         return name;
     }
@@ -141,6 +150,20 @@ public class WebPage {
      */
     public String getContent() {
         return counter.getContent();
+    }
+
+    /**
+     * 設定網頁內容（測試/手動注入使用）
+     * @param content 網頁文字內容
+     */
+    public void setContent(String content) {
+        if (this.counter == null) {
+            this.counter = new WordCounter(this.url, content);
+        } else {
+            this.counter.setContent(content);
+        }
+        this.preview = content != null && content.length() > 200
+            ? content.substring(0, 200) + "..." : content;
     }
     
     /**
@@ -258,13 +281,29 @@ public class WebPage {
      * 取得分類
      * @return 分類
      */
-    public String getFeatures() {
+    public String getFeature() {
         return feature;
+    }
+
+    /**
+     * 兼容方法：取得分類（舊名 getCategory）
+     * @return 分類字串
+     */
+    public String getCategory() {
+        return feature;
+    }
+
+    /**
+     * 取得分類
+     * @return 分類
+     */
+    public List<String> getFeatures() {
+        return featuresList;
     }
     
     /**
      * 設定分類
-     * @param feature 分類
+     * @param features 分類列表
      */
     public void setFeature(String feature) {
         this.feature = feature;

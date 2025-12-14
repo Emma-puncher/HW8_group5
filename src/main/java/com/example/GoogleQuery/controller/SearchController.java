@@ -98,10 +98,10 @@ public class SearchController {
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("keyword", keyword);
-            response.put("filters", new HashMap<String, Object>() {{
-                put("districts", districtList);
-                put("features", featureList);
-            }});
+            Map<String, Object> filters = new HashMap<>();
+            filters.put("districts", districtList);
+            filters.put("features", featureList);
+            response.put("filters", filters);
             response.put("total", results.size());
             response.put("results", results);
             
