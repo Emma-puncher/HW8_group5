@@ -327,9 +327,9 @@ public class HashtagService {
         String input = partialInput.toLowerCase();
         
         // 從所有關鍵字中找出匹配的
-        return keywordService.getAllKeywords().stream()
+        return keywordService.getAllKeywordsName().stream()
                 .filter(keyword -> keyword.toLowerCase().contains(input))
-                .filter(this::isValidHashtag)
+                .filter(keyword -> isValidHashtag(keyword))
                 .limit(limit)
                 .collect(Collectors.toList());
     }

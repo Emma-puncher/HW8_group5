@@ -220,7 +220,7 @@ public class RankingService {
      * @return 出現最多的關鍵字列表
      */
     public List<String> getTopDomainKeywords(WebPage webPage, int topN) {
-        List<String> allDomainKeywords = keywordService.getAllKeywords();
+        List<String> allDomainKeywords = keywordService.getAllKeywordsName();
         Map<String, Integer> counts = getKeywordCounts(webPage, allDomainKeywords);
         
         return counts.entrySet().stream()
