@@ -1,5 +1,7 @@
 package com.example.GoogleQuery.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -121,8 +123,43 @@ public class SearchResult implements Comparable<SearchResult> {
      * 取得 Hashtags（便利方法）
      * @return Hashtags 字串
      */
+    @JsonIgnore
     public String getHashtags() {
         return page.getHashtags();
+    }
+    
+    /**
+     * 取得 Hashtags 列表（用於 JSON 序列化）
+     * @return Hashtags 列表
+     */
+    @JsonProperty("hashtags")
+    public List<String> getHashtagList() {
+        // 如果有 tags 欄位，優先使用
+        if (tags != null && !tags.isEmpty()) {
+            return tags;
+        }
+        
+        // 否則解析 hashtags 字串
+        String hashtagsStr = getHashtags();
+        if (hashtagsStr == null || hashtagsStr.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        // 移除前後的方括號並分割
+        hashtagsStr = hashtagsStr.trim();
+        if (hashtagsStr.startsWith("[") && hashtagsStr.endsWith("]")) {
+            hashtagsStr = hashtagsStr.substring(1, hashtagsStr.length() - 1);
+        }
+        
+        List<String> result = new ArrayList<>();
+        String[] parts = hashtagsStr.split(",");
+        for (String part : parts) {
+            String cleaned = part.trim().replace("\"", "");
+            if (!cleaned.isEmpty()) {
+                result.add(cleaned);
+            }
+        }
+        return result;
     }
     
     /**

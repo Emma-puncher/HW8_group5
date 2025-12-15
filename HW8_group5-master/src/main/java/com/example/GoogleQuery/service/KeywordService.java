@@ -1,8 +1,10 @@
 package com.example.GoogleQuery.service;
 
 import com.example.GoogleQuery.model.Keyword;
+import com.example.GoogleQuery.model.KeywordTier;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
@@ -35,6 +37,13 @@ public class KeywordService {
     
     // 停用詞列表
     private Set<String> stopWords;
+    
+    // 注入從 DataLoaderConfig 載入的關鍵字列表
+    private final ArrayList<Keyword> keywordList;
+    
+    public KeywordService(@Qualifier("keywordList") ArrayList<Keyword> keywordList) {
+        this.keywordList = keywordList;
+    }
 
     /**
      * 初始化：載入關鍵字資料
@@ -42,7 +51,8 @@ public class KeywordService {
     @PostConstruct
     public void init() {
         try {
-            loadKeywordsFromFile();
+            // 使用已經載入的關鍵字列表
+            loadKeywordsFromList();
             loadTranslations();
             loadStopWords();
             
@@ -57,56 +67,44 @@ public class KeywordService {
             
         } catch (Exception e) {
             System.err.println("KeywordService 初始化失敗: " + e.getMessage());
+            e.printStackTrace();
             initializeDefaultKeywords();
             allKeywordsMap = keywordMap;
         }
     }
-
+    
     /**
-     * 從 JSON 載入關鍵字資料
+     * 從注入的關鍵字列表載入資料
      */
-    private void loadKeywordsFromFile() throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
-        InputStream inputStream = new ClassPathResource(DATA_FILE_PATH).getInputStream();
-        
-        Map<String, Object> data = mapper.readValue(inputStream, 
-            new TypeReference<Map<String, Object>>() {});
-        
+    private void loadKeywordsFromList() {
         keywordMap = new HashMap<>();
         tierMap = new HashMap<>();
         
-        // 載入 Tier 1 關鍵字
-        loadTierKeywords(data, "tier1", 1);
-        
-        // 載入 Tier 2 關鍵字
-        loadTierKeywords(data, "tier2", 2);
-        
-        // 載入 Tier 3 關鍵字
-        loadTierKeywords(data, "tier3", 3);
+        for (Keyword keyword : keywordList) {
+            keywordMap.put(keyword.getName(), keyword);
+            
+            // 根據 KeywordTier 轉換為數字層級
+            int tierNumber = getTierNumber(keyword.getTier());
+            tierMap.computeIfAbsent(tierNumber, k -> new ArrayList<>()).add(keyword);
+        }
     }
-
+    
     /**
-     * 載入特定層級的關鍵字
+     * 將 KeywordTier 轉換為數字層級
      */
-    private void loadTierKeywords(Map<String, Object> data, String tierKey, int tierNumber) {
-        @SuppressWarnings("unchecked")
-        Map<String, Object> tierData = (Map<String, Object>) data.get(tierKey);
-        
-        if (tierData != null) {
-            @SuppressWarnings("unchecked")
-            List<String> keywords = (List<String>) tierData.get("keywords");
-            Double weight = ((Number) tierData.get("weight")).doubleValue();
-            
-            List<Keyword> tierKeywords = new ArrayList<>();
-            
-            for (String keywordName : keywords) {
-                // 使用 tierNumber 建構子（int）
-                Keyword keyword = new Keyword(keywordName, weight, tierNumber);
-                keywordMap.put(keywordName, keyword);
-                tierKeywords.add(keyword);
-            }
-            
-            tierMap.put(tierNumber, tierKeywords);
+    private int getTierNumber(KeywordTier tier) {
+        if (tier == null) {
+            return 3; // 預設為 Tier 3
+        }
+        switch (tier) {
+            case CORE:
+                return 1;
+            case SECONDARY:
+                return 2;
+            case REFERENCE:
+                return 3;
+            default:
+                return 3;
         }
     }
 

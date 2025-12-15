@@ -37,22 +37,23 @@ public class DataLoaderConfig {
             ClassPathResource resource = new ClassPathResource("data/cafes.json");
             Reader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8);
             
-            // 定義 JSON 結構類型
-            Type cafeListType = new TypeToken<CafeDataWrapper>(){}.getType();
-            CafeDataWrapper wrapper = gson.fromJson(reader, cafeListType);
+            // 直接解析為 Cafe 陣列（前端提供的是陣列格式）
+            Type cafeListType = new TypeToken<ArrayList<Cafe>>(){}.getType();
+            ArrayList<Cafe> cafes = gson.fromJson(reader, cafeListType);
             
             reader.close();
             
-            if (wrapper != null && wrapper.cafes != null) {
-                System.out.println("成功載入 " + wrapper.cafes.size() + " 家咖啡廳");
-                return new ArrayList<>(wrapper.cafes);
+            if (cafes != null && !cafes.isEmpty()) {
+                System.out.println("成功載入 " + cafes.size() + " 家咖啡廳");
+                return cafes;
             } else {
                 System.out.println("警告：咖啡廳資料為空，使用預設資料");
                 return createDefaultCafes();
             }
             
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.err.println("無法載入咖啡廳資料: " + e.getMessage());
+            e.printStackTrace();
             System.out.println("使用預設咖啡廳資料");
             return createDefaultCafes();
         }
@@ -70,6 +71,7 @@ public class DataLoaderConfig {
             ClassPathResource resource = new ClassPathResource("data/keywords.json");
             Reader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8);
             
+            // 解析新的 JSON 格式（包含 meta_info 和 keywords 陣列）
             Type keywordListType = new TypeToken<KeywordDataWrapper>(){}.getType();
             KeywordDataWrapper wrapper = gson.fromJson(reader, keywordListType);
             
@@ -77,16 +79,27 @@ public class DataLoaderConfig {
             
             ArrayList<Keyword> allKeywords = new ArrayList<>();
             
-            if (wrapper != null) {
-                // 合併所有分級的關鍵字
-                if (wrapper.core_keywords != null) {
-                    allKeywords.addAll(convertToKeywords(wrapper.core_keywords, KeywordTier.CORE));
-                }
-                if (wrapper.secondary_keywords != null) {
-                    allKeywords.addAll(convertToKeywords(wrapper.secondary_keywords, KeywordTier.SECONDARY));
-                }
-                if (wrapper.reference_keywords != null) {
-                    allKeywords.addAll(convertToKeywords(wrapper.reference_keywords, KeywordTier.REFERENCE));
+            if (wrapper != null && wrapper.keywords != null) {
+                // 根據 category 分類處理關鍵字
+                for (KeywordItem item : wrapper.keywords) {
+                    KeywordTier tier;
+                    switch (item.category.toLowerCase()) {
+                        case "core":
+                            tier = KeywordTier.CORE;
+                            break;
+                        case "secondary":
+                            tier = KeywordTier.SECONDARY;
+                            break;
+                        case "reference":
+                            tier = KeywordTier.REFERENCE;
+                            break;
+                        default:
+                            tier = KeywordTier.REFERENCE;
+                    }
+                    
+                    Keyword keyword = new Keyword(item.term, item.weight);
+                    keyword.setTier(tier);
+                    allKeywords.add(keyword);
                 }
                 
                 System.out.println("成功載入 " + allKeywords.size() + " 個關鍵字");
@@ -96,8 +109,9 @@ public class DataLoaderConfig {
                 return createDefaultKeywords();
             }
             
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.err.println("無法載入關鍵字資料: " + e.getMessage());
+            e.printStackTrace();
             System.out.println("使用預設關鍵字資料");
             return createDefaultKeywords();
         }
@@ -132,24 +146,6 @@ public class DataLoaderConfig {
             System.err.println("無法載入基準分數: " + e.getMessage());
             return new java.util.HashMap<>();
         }
-    }
-    
-    /**
-     * 轉換 JSON 資料為 Keyword 物件
-     */
-    private List<Keyword> convertToKeywords(List<Map<String, Object>> data, KeywordTier tier) {
-        List<Keyword> keywords = new ArrayList<>();
-        
-        for (Map<String, Object> item : data) {
-            String name = (String) item.get("name");
-            double weight = ((Number) item.get("weight")).doubleValue();
-            
-            Keyword keyword = new Keyword(name, weight);
-            keyword.setTier(tier);
-            keywords.add(keyword);
-        }
-        
-        return keywords;
     }
     
     /**
@@ -228,12 +224,20 @@ public class DataLoaderConfig {
     }
     
     /**
-     * 關鍵字資料包裝類別
+     * 關鍵字資料包裝類別（適配新的 JSON 格式）
      */
     private static class KeywordDataWrapper {
-        List<Map<String, Object>> core_keywords;
-        List<Map<String, Object>> secondary_keywords;
-        List<Map<String, Object>> reference_keywords;
+        List<KeywordItem> keywords;
+    }
+    
+    /**
+     * 關鍵字項目類別
+     */
+    private static class KeywordItem {
+        String term;
+        String category;
+        double weight;
+        String note;
     }
 }
 

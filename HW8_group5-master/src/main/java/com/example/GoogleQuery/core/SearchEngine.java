@@ -170,7 +170,8 @@ public class SearchEngine {
         ranker.normalizeScores();
         
         // 5. 生成 Hashtags（使用者輸入 + 網站 Top 3 關鍵字）
-        generateHashtagsForPages(filteredPages, query);
+        // ❌ 註釋掉：不要動態生成 hashtags，保留咖啡廳原本的 hashtags
+        // generateHashtagsForPages(filteredPages, query);
         
         // 6. 取得排名結果
         ArrayList<SearchResult> results = ranker.getRankedResults();

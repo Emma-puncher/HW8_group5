@@ -30,21 +30,31 @@ public class SearchController {
 
     /**
      * 基本搜尋 API
-     * GET /api/search?keyword=不限時
+     * GET /api/search?q=不限時
      * 
-     * @param keyword 搜尋關鍵字
+     * @param q 搜尋關鍵字
      * @return 搜尋結果列表
      */
     @GetMapping("/search")
-    public ResponseEntity<Map<String, Object>> search(@RequestParam String keyword) {
+    public ResponseEntity<Map<String, Object>> search(@RequestParam(value = "q", required = false) String q,
+                                                       @RequestParam(value = "keyword", required = false) String keyword) {
         try {
+            // 支援前端的 q 參數和 keyword 參數（向後兼容）
+            String searchKeyword = (q != null) ? q : keyword;
+            if (searchKeyword == null || searchKeyword.trim().isEmpty()) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("error", "請提供搜尋關鍵字");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            
             // 呼叫 SearchService 進行搜尋
-            ArrayList<SearchResult> results = searchService.search(keyword);
+            ArrayList<SearchResult> results = searchService.search(searchKeyword);
             
             // 建立回應
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("keyword", keyword);
+            response.put("keyword", searchKeyword);
             response.put("total", results.size());
             response.put("results", results);
             
@@ -119,12 +129,13 @@ public class SearchController {
 
     /**
      * 取得熱門推薦咖啡廳
+     * GET /api/recommendations?limit=10
      * GET /api/search/recommendations?limit=10
      * 
      * @param limit 返回數量（預設 10）
      * @return 熱門推薦咖啡廳列表
      */
-    @GetMapping("/search/recommendations")
+    @GetMapping(value = {"/recommendations", "/search/recommendations"})
     public ResponseEntity<Map<String, Object>> getRecommendations(
             @RequestParam(defaultValue = "10") int limit) {
         
