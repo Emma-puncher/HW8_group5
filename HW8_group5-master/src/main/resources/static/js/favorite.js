@@ -40,7 +40,9 @@ class FavoriteManager {
 
     // 檢查是否已收藏
     isFavorite(cafeId) {
-        return this.favorites.some(fav => fav.id === cafeId);
+        const result = this.favorites.some(fav => fav.id === cafeId);
+        console.log('🔍 檢查收藏狀態 - cafeId:', cafeId, '結果:', result, '收藏清單:', this.favorites.map(f => f.id));
+        return result;
     }
 
     // 加入收藏
@@ -190,6 +192,8 @@ function attachFavoriteListeners() {
             e.stopPropagation();
             const cafeId = btn.dataset.cafeId;
             
+            console.log('💗 點擊收藏按鈕，cafeId:', cafeId);
+            
             // 從 DOM 中取得咖啡廳資訊
             const card = btn.closest('.cafe-card');
             const cafe = {
@@ -204,6 +208,9 @@ function attachFavoriteListeners() {
                 ),
                 score: parseFloat(card.querySelector('.cafe-score')?.textContent.trim()) || 0
             };
+
+            console.log('💗 咖啡廳資料:', cafe);
+            console.log('💗 目前是否已收藏:', window.favoriteManager.isFavorite(cafeId));
 
             window.favoriteManager.toggleFavorite(cafe);
             

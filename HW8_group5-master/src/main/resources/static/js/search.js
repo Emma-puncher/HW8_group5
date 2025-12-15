@@ -10,13 +10,34 @@ class SearchManager {
         try {
             // 先嘗試呼叫後端 API
             try {
-                const params = new URLSearchParams({
-                    q: query,
-                    ...filterParams
-                });
-                const data = await window.utils.apiRequest(`/search?${params}`);
+                // 檢查是否有篩選參數
+                const hasFilters = filterParams.district || filterParams.features;
+                
+                let data;
+                if (hasFilters) {
+                    // 使用進階搜尋 API（支援空關鍵字）
+                    const params = new URLSearchParams({
+                        keyword: query || '', // 允許空關鍵字
+                        ...(filterParams.district && { districts: filterParams.district }),
+                        ...(filterParams.features && { features: filterParams.features })
+                    });
+                    console.log('🔍 Calling advanced search API with filters:', params.toString());
+                    data = await window.utils.apiRequest(`/search/advanced?${params}`);
+                } else if (query) {
+                    // 使用基礎搜尋 API（需要關鍵字）
+                    const params = new URLSearchParams({ q: query });
+                    console.log('🔍 Calling basic search API:', params.toString());
+                    data = await window.utils.apiRequest(`/search?${params}`);
+                } else {
+                    // 沒有關鍵字也沒有篩選，回傳空結果
+                    this.currentResults = [];
+                    this.currentQuery = '';
+                    return [];
+                }
+                
                 this.currentResults = data.results || [];
-                console.log('✅ Using backend API');
+                console.log(`✅ Found ${this.currentResults.length} results from backend API`);
+                console.log('🔍 第一筆資料的 ID:', this.currentResults[0]?.id, '完整資料:', this.currentResults[0]);
             } catch (apiError) {
                 // 如果 API 失敗,使用 Mock Data
                 console.log('⚠️ Backend API not available, using mock data');
@@ -36,9 +57,18 @@ class SearchManager {
         try {
             // 先嘗試呼叫後端 API
             try {
-                const params = new URLSearchParams(filterParams);
+                // 格式化篩選參數
+                const params = new URLSearchParams();
+                if (filterParams.district) {
+                    params.append('districts', filterParams.district);
+                }
+                if (filterParams.features) {
+                    params.append('features', filterParams.features);
+                }
+                
+                console.log('🌟 Calling recommendations API with filters:', params.toString());
                 const data = await window.utils.apiRequest(`/recommendations?${params}`);
-                console.log('✅ Using backend API for recommendations');
+                console.log(`✅ Found ${data.recommendations?.length || 0} recommendations from backend API`);
                 return data.recommendations || [];
             } catch (apiError) {
                 // 如果 API 失敗,使用 Mock Data

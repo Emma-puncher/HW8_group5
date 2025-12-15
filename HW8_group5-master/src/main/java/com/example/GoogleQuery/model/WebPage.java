@@ -19,7 +19,7 @@ public class WebPage {
     
     private String url;
     private String name;
-    private WordCounter counter;
+    protected WordCounter counter;  // 改為 protected，讓子類可以訪問
     private double score;
     
     // 新增欄位：用於支援新功能

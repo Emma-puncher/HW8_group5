@@ -49,6 +49,21 @@ public class SearchResult implements Comparable<SearchResult> {
     }
 
     /**
+     * 從 Cafe 物件建立 SearchResult
+     * @param cafe 咖啡廳物件
+     */
+    public SearchResult(Cafe cafe) {
+        this.page = cafe; // Cafe extends WebPage
+        this.score = 0.0;
+        this.cafeId = cafe.getId();
+        this.phoneNumber = cafe.getPhone();
+        this.rating = cafe.getRating();
+        this.features = cafe.getFeatures();
+        this.tags = cafe.getTags();
+        this.userRatingsTotal = cafe.getReviewCount();
+    }
+
+    /**
      * 建構子（含 URL 和名稱）
      * @param url URL
      * @param name 名稱

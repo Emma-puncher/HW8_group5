@@ -176,7 +176,15 @@ public class SearchEngine {
         // 6. 取得排名結果
         ArrayList<SearchResult> results = ranker.getRankedResults();
         
-        return results;
+        // 7. 過濾掉分數太低的結果（分數 > 0）
+        ArrayList<SearchResult> filteredResults = new ArrayList<>();
+        for (SearchResult result : results) {
+            if (result.getScore() > 0) {
+                filteredResults.add(result);
+            }
+        }
+        
+        return filteredResults;
     }
 
     

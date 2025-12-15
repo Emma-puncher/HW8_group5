@@ -123,7 +123,21 @@ public class Ranker {
         
         for (WebPage page : sortedPages) {
             double score = scoreMap.getOrDefault(page, 0.0);
-            results.add(new SearchResult(page, score));
+            SearchResult result = new SearchResult(page, score);
+            
+            // 如果 page 是 Cafe 實例，設定額外的咖啡廳資訊
+            if (page instanceof Cafe) {
+                Cafe cafe = (Cafe) page;
+                result.setCafeId(cafe.getId());
+                result.setPhoneNumber(cafe.getPhone());
+                result.setRating(cafe.getRating());
+                result.setFeatures(cafe.getFeatures());
+                result.setTags(cafe.getTags());
+                result.setDistrict(cafe.getDistrict());
+                result.setAddress(cafe.getAddress());
+            }
+            
+            results.add(result);
         }
         
         return results;

@@ -138,13 +138,16 @@ async function applyFilters() {
     const searchInput = document.getElementById('searchInput');
     const query = searchInput?.value.trim() || '';
 
-    // 如果有搜尋內容,觸發搜尋
-    if (query) {
+    // 無論有沒有關鍵字，都使用搜尋功能（如果有篩選條件的話）
+    const hasFilters = window.filterManager.hasAnyFilter();
+    
+    if (query || hasFilters) {
+        // 使用搜尋功能（支援空關鍵字 + 篩選條件）
         if (window.searchModule && window.searchModule.performSearch) {
             await window.searchModule.performSearch();
         }
     } else {
-        // 否則顯示篩選後的熱門推薦
+        // 完全沒有搜尋條件和篩選時，顯示熱門推薦
         if (window.searchModule && window.searchModule.loadRecommendations) {
             await window.searchModule.loadRecommendations();
         }

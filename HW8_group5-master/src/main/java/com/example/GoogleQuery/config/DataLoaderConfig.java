@@ -44,6 +44,10 @@ public class DataLoaderConfig {
             reader.close();
             
             if (cafes != null && !cafes.isEmpty()) {
+                // 解析 keywords 並設定對應的功能布林值
+                for (Cafe cafe : cafes) {
+                    parseKeywordsToFeatures(cafe);
+                }
                 System.out.println("成功載入 " + cafes.size() + " 家咖啡廳");
                 return cafes;
             } else {
@@ -238,6 +242,68 @@ public class DataLoaderConfig {
         String category;
         double weight;
         String note;
+    }
+    
+    /**
+     * 解析 keywords 字符串並設定對應的功能布林值
+     * @param cafe 咖啡廳物件
+     */
+    private void parseKeywordsToFeatures(Cafe cafe) {
+        if (cafe == null) return;
+        
+        String keywords = cafe.getKeywords();
+        if (keywords == null || keywords.isEmpty()) return;
+        
+        try {
+            // keywords 可能是 JSON 陣列字符串: "[\"不限時\",\"有插座\"]"
+            // 或逗號分隔的字符串: "不限時,有插座"
+            List<String> keywordList = new ArrayList<>();
+            
+            if (keywords.startsWith("[")) {
+                // JSON 陣列格式
+                Type listType = new TypeToken<List<String>>(){}.getType();
+                keywordList = gson.fromJson(keywords, listType);
+            } else {
+                // 逗號分隔格式
+                String[] parts = keywords.split(",");
+                for (String part : parts) {
+                    keywordList.add(part.trim());
+                }
+            }
+            
+            // 根據關鍵字設定對應的布林值
+            for (String keyword : keywordList) {
+                switch (keyword.trim()) {
+                    case "不限時":
+                        cafe.setNoTimeLimit(true);
+                        break;
+                    case "有插座":
+                        cafe.setHasSocket(true);
+                        break;
+                    case "有wifi":
+                    case "wifi":
+                        cafe.setHasWifi(true);
+                        break;
+                    case "安靜":
+                        cafe.setQuiet(true);
+                        break;
+                    case "CP值高":
+                        cafe.setHighCP(true);
+                        break;
+                    case "寵物友善":
+                        cafe.setPetFriendly(true);
+                        break;
+                    case "戶外座位":
+                        cafe.setHasOutdoorSeating(true);
+                        break;
+                    case "燈光充足":
+                        cafe.setGoodLighting(true);
+                        break;
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("解析咖啡廳 " + cafe.getName() + " 的 keywords 失敗: " + e.getMessage());
+        }
     }
 }
 

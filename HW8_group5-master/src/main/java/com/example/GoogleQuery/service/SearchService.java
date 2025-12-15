@@ -79,9 +79,76 @@ public class SearchService {
         if (allCafes == null) {
             allCafes = new ArrayList<>();
         }
+        
+        // ✨ 解析 keywords 並設定功能布林值
+        for (Cafe cafe : allCafes) {
+            parseKeywordsToFeatures(cafe);
+            // 構建可搜尋內容（重要！讓分數計算能正確運作）
+            cafe.buildSearchableContent();
+        }
 
         cafeMap = allCafes.stream()
                 .collect(Collectors.toMap(Cafe::getId, cafe -> cafe));
+    }
+    
+    /**
+     * 解析 keywords 字符串並設定對應的功能布林值
+     * @param cafe 咖啡廳物件
+     */
+    private void parseKeywordsToFeatures(Cafe cafe) {
+        if (cafe == null) return;
+        
+        String keywords = cafe.getKeywords();
+        if (keywords == null || keywords.isEmpty()) return;
+        
+        try {
+            List<String> keywordList = new ArrayList<>();
+            
+            if (keywords.startsWith("[")) {
+                // JSON 陣列格式
+                ObjectMapper mapper = new ObjectMapper();
+                keywordList = mapper.readValue(keywords, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
+            } else {
+                // 逗號分隔格式
+                String[] parts = keywords.split(",");
+                for (String part : parts) {
+                    keywordList.add(part.trim());
+                }
+            }
+            
+            // 根據關鍵字設定對應的布林值
+            for (String keyword : keywordList) {
+                switch (keyword.trim()) {
+                    case "不限時":
+                        cafe.setNoTimeLimit(true);
+                        break;
+                    case "有插座":
+                        cafe.setHasSocket(true);
+                        break;
+                    case "有wifi":
+                    case "wifi":
+                        cafe.setHasWifi(true);
+                        break;
+                    case "安靜":
+                        cafe.setQuiet(true);
+                        break;
+                    case "CP值高":
+                        cafe.setHighCP(true);
+                        break;
+                    case "寵物友善":
+                        cafe.setPetFriendly(true);
+                        break;
+                    case "戶外座位":
+                        cafe.setHasOutdoorSeating(true);
+                        break;
+                    case "燈光充足":
+                        cafe.setGoodLighting(true);
+                        break;
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("解析咖啡廳 " + cafe.getName() + " 的 keywords 失敗: " + e.getMessage());
+        }
     }
 
     /**
@@ -155,19 +222,40 @@ public class SearchService {
 
     /**
      * 進階搜尋（支援地區和功能篩選）
+     * @param keyword 搜尋關鍵字（空字串時搜尋全部）
+     * @param districts 地區列表
+     * @param features 功能列表
+     * @return 搜尋結果列表
      */
     public ArrayList<SearchResult> advancedSearch(
             String keyword,
             List<String> districts,
             List<String> features) {
 
-        ArrayList<SearchResult> results = search(keyword);
+        ArrayList<SearchResult> results;
+        
+        // 如果關鍵字為空且有篩選條件，則先取得所有咖啡廳
+        if ((keyword == null || keyword.trim().isEmpty()) && 
+            ((districts != null && !districts.isEmpty()) || 
+             (features != null && !features.isEmpty()))) {
+            // 將所有咖啡廳轉換為 SearchResult
+            results = new ArrayList<>();
+            for (Cafe cafe : allCafes) {
+                SearchResult result = new SearchResult(cafe);
+                results.add(result);
+            }
+        } else {
+            // 有關鍵字時使用正常搜尋
+            results = search(keyword);
+        }
 
+        // 應用地區篩選
         if (districts != null && !districts.isEmpty()) {
             DistrictFilter districtFilter = new DistrictFilter(districts);
             results = districtFilter.filter(results);
         }
 
+        // 應用功能篩選
         if (features != null && !features.isEmpty()) {
             FeatureFilter featureFilter = new FeatureFilter(features);
             results = featureFilter.filter(results);

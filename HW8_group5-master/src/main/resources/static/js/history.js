@@ -28,6 +28,9 @@ class HistoryManager {
 
     // 新增瀏覽紀錄
     addHistory(cafe) {
+        console.log('🔍 新增瀏覽紀錄:', cafe);
+        console.log('📊 目前紀錄數量:', this.history.length);
+        
         // 移除相同的舊紀錄
         this.history = this.history.filter(item => item.id !== cafe.id);
 
@@ -50,6 +53,8 @@ class HistoryManager {
         }
 
         this.saveHistory();
+        console.log('✅ 儲存後紀錄數量:', this.history.length);
+        console.log('💾 LocalStorage 內容:', localStorage.getItem(this.storageKey));
     }
 
     // 移除單筆紀錄
@@ -80,8 +85,10 @@ class HistoryManager {
     }
 }
 
-// 初始化瀏覽紀錄管理器
-window.historyManager = new HistoryManager();
+// 初始化瀏覽紀錄管理器（只在不存在時創建）
+if (!window.historyManager) {
+    window.historyManager = new HistoryManager();
+}
 
 // 渲染瀏覽紀錄
 function renderHistory() {
@@ -211,6 +218,8 @@ function initHistory() {
             !e.target.closest('.compare-checkbox') && 
             !e.target.closest('.cafe-address')) {
             const cafeId = card.dataset.cafeId;
+            
+            console.log('🎯 點擊咖啡廳卡片，ID:', cafeId);
             
             // 從 DOM 中取得咖啡廳資訊
             const cafe = {

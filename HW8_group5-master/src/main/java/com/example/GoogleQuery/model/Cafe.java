@@ -394,5 +394,41 @@ public void setKeywords(String keywords) {
             id, getName(), getDistrict(), rating, getFeatureTags()
         );
     }
+    
+    /**
+     * 構建咖啡廳的可搜尋內容
+     * 將所有相關資訊組合成一個字串，供關鍵字搜尋使用
+     */
+    public void buildSearchableContent() {
+        StringBuilder content = new StringBuilder();
+        
+        // 加入名稱
+        content.append(getName()).append(" ");
+        
+        // 加入描述
+        if (description != null && !description.isEmpty()) {
+            content.append(description).append(" ");
+        }
+        
+        // 加入地區和地址
+        content.append(getDistrict()).append(" ");
+        content.append(getAddress()).append(" ");
+        
+        // 加入功能特性（轉換為文字）
+        List<String> features = getFeatureTags();
+        for (String feature : features) {
+            content.append(feature).append(" ");
+        }
+        
+        // 加入標籤
+        if (getTags() != null) {
+            for (String tag : getTags()) {
+                content.append(tag).append(" ");
+            }
+        }
+        
+        // 更新 WordCounter 的內容
+        this.counter = new WordCounter(getUrl(), content.toString());
+    }
 }
 

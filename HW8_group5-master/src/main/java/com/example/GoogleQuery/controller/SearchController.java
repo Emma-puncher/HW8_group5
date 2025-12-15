@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,14 +76,14 @@ public class SearchController {
      * 進階搜尋 API（支援地區和功能篩選）
      * GET /api/search/advanced?keyword=咖啡&districts=大安區,中山區&features=不限時,有插座
      * 
-     * @param keyword 搜尋關鍵字
+     * @param keyword 搜尋關鍵字（可選，為空時搜尋全部）
      * @param districts 地區列表（逗號分隔，可選）
      * @param features 功能列表（逗號分隔，可選）
      * @return 搜尋結果列表
      */
     @GetMapping("/search/advanced")
     public ResponseEntity<Map<String, Object>> advancedSearch(
-            @RequestParam String keyword,
+            @RequestParam(required = false, defaultValue = "") String keyword,
             @RequestParam(required = false) String districts,
             @RequestParam(required = false) String features) {
         
@@ -99,7 +100,7 @@ public class SearchController {
                 featureList = List.of(features.split(","));
             }
             
-            // 呼叫進階搜尋
+            // 呼叫進階搜尋（支援空關鍵字）
             ArrayList<SearchResult> results = searchService.advancedSearch(
                 keyword, districtList, featureList
             );

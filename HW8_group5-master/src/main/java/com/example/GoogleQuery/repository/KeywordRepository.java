@@ -52,14 +52,43 @@ public class KeywordRepository {
         keywordMap = new HashMap<>();
         tierMap = new HashMap<>();
         
-        // 載入 Tier 1 關鍵字
-        loadTierKeywords(data, "tier1", 1);
+        // 檢查是否為新格式 (包含 "keywords" 陣列)
+        if (data.containsKey("keywords")) {
+            loadKeywordsFromNewFormat(data);
+        } else {
+            // 舊格式：tier1, tier2, tier3
+            loadTierKeywords(data, "tier1", 1);
+            loadTierKeywords(data, "tier2", 2);
+            loadTierKeywords(data, "tier3", 3);
+        }
+    }
+    
+    /**
+     * 從新格式載入關鍵字
+     */
+    private void loadKeywordsFromNewFormat(Map<String, Object> data) {
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> keywords = (List<Map<String, Object>>) data.get("keywords");
         
-        // 載入 Tier 2 關鍵字
-        loadTierKeywords(data, "tier2", 2);
+        // 根據 category 分組
+        Map<String, Integer> categoryToTier = new HashMap<>();
+        categoryToTier.put("core", 1);
+        categoryToTier.put("secondary", 2);
+        categoryToTier.put("additional", 3);
         
-        // 載入 Tier 3 關鍵字
-        loadTierKeywords(data, "tier3", 3);
+        for (Map<String, Object> keywordData : keywords) {
+            String term = (String) keywordData.get("term");
+            String category = (String) keywordData.get("category");
+            Double weight = ((Number) keywordData.get("weight")).doubleValue();
+            
+            int tier = categoryToTier.getOrDefault(category, 3);
+            
+            Keyword keyword = new Keyword(term, weight, tier);
+            keywordMap.put(term, keyword);
+            
+            // 加入到 tierMap
+            tierMap.computeIfAbsent(tier, k -> new ArrayList<>()).add(keyword);
+        }
     }
 
     /**

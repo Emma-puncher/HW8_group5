@@ -99,15 +99,17 @@ class CafeSearchApp {
     // 檢查後端連線
     async checkBackendConnection() {
         try {
-            // 嘗試呼叫健康檢查端點 (如果有的話)
-            const response = await fetch(`${window.utils.API_BASE_URL}/health`, {
-                method: 'GET',
-                timeout: 5000
+            // 直接嘗試呼叫實際的 API 來檢查連線
+            const response = await fetch(`${window.utils.API_BASE_URL}/search?q=test`, {
+                method: 'GET'
             }).catch(() => null);
 
             if (!response || !response.ok) {
                 console.warn('Backend connection check failed, using mock data mode');
                 this.useMockData = true;
+            } else {
+                console.log('✅ Backend connected successfully');
+                this.useMockData = false;
             }
         } catch (error) {
             console.warn('Backend not available, using mock data mode');
