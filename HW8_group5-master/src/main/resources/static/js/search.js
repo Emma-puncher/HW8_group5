@@ -217,6 +217,115 @@ function attachCafeCardClickListeners() {
     });
 }
 
+// 檢查搜尋詞相關性
+async function checkSearchRelevance(query) {
+    try {
+        const params = new URLSearchParams({ q: query });
+        const response = await window.utils.apiRequest(`/search/validate?${params}`);
+        return {
+            isRelevant: response.isRelevant,
+            message: response.message,
+            suggestions: response.suggestions || []
+        };
+    } catch (error) {
+        console.warn('相關性檢查失敗,繼續執行搜尋:', error);
+        // 如果檢查失敗,預設允許搜尋
+        return { isRelevant: true, message: '', suggestions: [] };
+    }
+}
+
+// 顯示相關性警告和建議
+function showRelevanceWarning(query, relevanceResult) {
+    const resultsSection = document.getElementById('resultsSection');
+    const resultsContainer = document.getElementById('resultsContainer');
+    const resultsTitle = document.getElementById('resultsTitle');
+    const recommendationsSection = document.getElementById('recommendationsSection');
+
+    if (!resultsSection || !resultsContainer) return;
+
+    // 隱藏熱門推薦
+    if (recommendationsSection) {
+        recommendationsSection.style.display = 'none';
+    }
+
+    // 構建警告 HTML
+    let warningHTML = `
+        <div class="relevance-warning" style="padding: 20px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; margin-bottom: 20px;">
+            <div style="display: flex; align-items: flex-start; gap: 12px;">
+                <i class="fas fa-exclamation-triangle" style="color: #ff6b6b; font-size: 20px; margin-top: 4px; flex-shrink: 0;"></i>
+                <div style="flex-grow: 1;">
+                    <h3 style="margin: 0 0 8px 0; color: #333;">搜尋詞可能不相關</h3>
+                    <p style="margin: 0 0 12px 0; color: #666; font-size: 14px;">${relevanceResult.message}</p>
+                    
+                    ${relevanceResult.suggestions && relevanceResult.suggestions.length > 0 ? `
+                    <div style="margin-bottom: 12px;">
+                        <p style="margin: 0 0 8px 0; color: #666; font-size: 14px; font-weight: 600;">建議搜尋:</p>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            ${relevanceResult.suggestions.map(suggestion => `
+                                <button class="suggestion-btn" style="
+                                    padding: 6px 12px;
+                                    background-color: #fff;
+                                    border: 1px solid #ffc107;
+                                    border-radius: 4px;
+                                    color: #ff6b6b;
+                                    cursor: pointer;
+                                    font-size: 13px;
+                                    transition: all 0.2s;
+                                " onclick="window.searchModule.suggestSearch('${suggestion}')" 
+                                   title="搜尋: ${suggestion}">
+                                    ${suggestion}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                        <button class="continue-btn" style="
+                            padding: 8px 16px;
+                            background-color: #ff6b6b;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            transition: all 0.2s;
+                        " onclick="window.searchModule.forceSearch('${query.replace(/'/g, "\\'")}')">
+                            仍要搜尋
+                        </button>
+                        <button class="cancel-btn" style="
+                            padding: 8px 16px;
+                            background-color: transparent;
+                            color: #666;
+                            border: 1px solid #ddd;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 14px;
+                            transition: all 0.2s;
+                        " onclick="window.searchModule.clear()">
+                            清除搜尋
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    resultsTitle.textContent = '搜尋結果';
+    resultsContainer.innerHTML = warningHTML;
+    resultsSection.style.display = 'block';
+
+    // 添加懸停效果
+    document.querySelectorAll('.suggestion-btn, .continue-btn, .cancel-btn').forEach(btn => {
+        btn.addEventListener('mouseover', function() {
+            this.style.opacity = '0.8';
+        });
+        btn.addEventListener('mouseout', function() {
+            this.style.opacity = '1';
+        });
+    });
+}
+
 // 執行搜尋
 async function performSearch() {
     const searchInput = document.getElementById('searchInput');
@@ -233,6 +342,16 @@ async function performSearch() {
     showLoading();
 
     try {
+        // 檢查搜尋詞的相關性
+        const relevanceResult = await checkSearchRelevance(query);
+        
+        if (!relevanceResult.isRelevant) {
+            // 不相關的搜尋詞 - 顯示警告提示
+            showRelevanceWarning(query, relevanceResult);
+            hideLoading();
+            return;
+        }
+
         // 取得篩選參數
         const filterParams = window.filterModule.getParams();
 
@@ -364,5 +483,41 @@ window.searchModule = {
     performSearch: performSearch,
     loadRecommendations: loadRecommendations,
     clear: clearSearch,
-    renderResults: renderSearchResults
+    renderResults: renderSearchResults,
+    // 新增: 強制執行不相關詞的搜尋
+    forceSearch: async function(query) {
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.value = query;
+        }
+        
+        showLoading();
+        try {
+            // 取得篩選參數
+            const filterParams = window.filterModule.getParams();
+            
+            // 直接執行搜尋,不進行相關性檢查
+            const results = await window.searchManager.search(query, filterParams);
+            const filteredResults = window.filterManager.filterCafes(results);
+            renderSearchResults(filteredResults, query);
+            window.utils.setQueryParam('q', query);
+        } catch (error) {
+            console.error('強制搜尋失敗:', error);
+            window.utils.showToast('搜尋失敗', 'error');
+            renderSearchResults([], query);
+        } finally {
+            hideLoading();
+        }
+    },
+    // 新增: 使用建議詞彙搜尋
+    suggestSearch: function(suggestion) {
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.value = suggestion;
+            if (document.getElementById('clearSearch')) {
+                document.getElementById('clearSearch').style.display = 'block';
+            }
+            performSearch();
+        }
+    }
 };

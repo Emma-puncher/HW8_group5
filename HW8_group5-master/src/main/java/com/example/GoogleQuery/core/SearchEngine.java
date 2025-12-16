@@ -175,15 +175,100 @@ public class SearchEngine {
         
         // 6. 取得排名結果
         ArrayList<SearchResult> results = ranker.getRankedResults();
-        
-        // 7. 過濾掉分數太低的結果（分數 > 0）
-        ArrayList<SearchResult> filteredResults = new ArrayList<>();
-        for (SearchResult result : results) {
-            if (result.getScore() > 0) {
-                filteredResults.add(result);
+
+        // 6.1 強化名稱匹配策略：確切匹配 > 子字串匹配 > 所有 token 命中
+        if (query != null && !query.trim().isEmpty()) {
+            String qRaw = query.trim();
+            String q = normalizeForMatch(qRaw);
+
+            for (SearchResult res : results) {
+                String nameRaw = res.getName() != null ? res.getName() : "";
+                String name = normalizeForMatch(nameRaw);
+
+                double boost = 0.0;
+                if (!name.isEmpty() && name.equals(q)) {
+                    // 完全相等，極高優先
+                    boost = 80.0;
+                } else if (!name.isEmpty() && name.contains(q)) {
+                    // 子字串包含
+                    boost = 50.0;
+                } else {
+                    // token-based 命中（查詢中的所有 token 都出現在名稱中）
+                    String[] tokens = q.split("\\s+");
+                    boolean allPresent = true;
+                    for (String t : tokens) {
+                        if (t.isEmpty()) continue;
+                        if (!name.contains(t)) { allPresent = false; break; }
+                    }
+                    if (allPresent && tokens.length > 0) {
+                        boost = 30.0;
+                    }
+                }
+
+                if (boost > 0) {
+                    res.setScore(res.getScore() + boost);
+                }
+            }
+
+            // 依新的分數重排序
+            results.sort((a, b) -> Double.compare(b.getScore(), a.getScore()));
+        }
+
+        // 6.2 去重：依據 cafeId（優先）或 name+address 做去重，保留分數最高的
+        Map<String, SearchResult> unique = new LinkedHashMap<>();
+        for (SearchResult res : results) {
+            String key = null;
+            String cafeId = res.getCafeId();
+            
+            // 優先使用 cafeId（Cafe 物件必有 ID）
+            if (cafeId != null && !cafeId.trim().isEmpty()) {
+                key = "id:" + cafeId.trim();
+            } else {
+                // 降級方案：用 name + address 組成 key（以防 cafeId 丟失）
+                String name = res.getName() != null ? res.getName().trim() : "";
+                String addr = res.getAddress() != null ? res.getAddress().trim() : "";
+                
+                // 規範化 name 和 address，移除標點和空白差異
+                String normName = normalizeForMatch(name);
+                String normAddr = normalizeForMatch(addr);
+                
+                // 避免空 key
+                if (!normName.isEmpty()) {
+                    key = "na:" + normName + "|" + normAddr;
+                } else {
+                    // 最後的防線：用 URL
+                    String url = res.getUrl() != null ? res.getUrl().trim() : "";
+                    key = "url:" + url;
+                }
+            }
+
+            if (key != null && !key.isEmpty()) {
+                if (!unique.containsKey(key)) {
+                    unique.put(key, res);
+                    // 調試日誌
+                    System.out.println("[去重] 新增: " + res.getName() + " -> key: " + key);
+                } else {
+                    // 已有相同 key，保留分數較高的
+                    SearchResult existing = unique.get(key);
+                    if (res.getScore() > existing.getScore()) {
+                        unique.put(key, res);
+                        System.out.println("[去重] 更新: " + res.getName() + " (舊分: " + existing.getScore() + " -> 新分: " + res.getScore() + ")");
+                    } else {
+                        System.out.println("[去重] 跳過: " + res.getName() + " (分數: " + res.getScore() + " <= " + existing.getScore() + ")");
+                    }
+                }
             }
         }
-        
+
+        // 7. 過濾掉分數太低的結果（分數 > 0）並回傳
+        ArrayList<SearchResult> filteredResults = new ArrayList<>();
+        for (SearchResult result : unique.values()) {
+            if (result.getScore() > 0) filteredResults.add(result);
+        }
+
+        // 最後再次以分數排序以保證順序
+        filteredResults.sort((a, b) -> Double.compare(b.getScore(), a.getScore()));
+
         return filteredResults;
     }
 
@@ -212,6 +297,16 @@ public class SearchEngine {
                 keyword.weight *= 1.5;  // 提高 50% 權重
             }
         }
+    }
+    
+    /**
+     * Normalize strings for matching: lower-case, remove punctuation, collapse spaces
+     */
+    private String normalizeForMatch(String s) {
+        if (s == null) return "";
+        String lowered = s.toLowerCase();
+        String cleaned = lowered.replaceAll("[^\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}\\p{L}\\p{N}]+", " ");
+        return cleaned.trim().replaceAll("\\s+", " ");
     }
     
     /**

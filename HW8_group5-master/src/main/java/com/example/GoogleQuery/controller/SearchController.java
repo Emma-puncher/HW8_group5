@@ -3,13 +3,13 @@ package com.example.GoogleQuery.controller;
 import com.example.GoogleQuery.model.SearchResult;
 import com.example.GoogleQuery.service.SearchService;
 import com.example.GoogleQuery.service.RecommendationService;
+import com.example.GoogleQuery.service.RelevanceValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +28,9 @@ public class SearchController {
     
     @Autowired
     private RecommendationService recommendationService;
+
+    @Autowired
+    private RelevanceValidator relevanceValidator;
 
     /**
      * 基本搜尋 API
@@ -48,14 +51,29 @@ public class SearchController {
                 errorResponse.put("error", "請提供搜尋關鍵字");
                 return ResponseEntity.badRequest().body(errorResponse);
             }
-            
-            // 呼叫 SearchService 進行搜尋
-            ArrayList<SearchResult> results = searchService.search(searchKeyword);
+
+            // 檢查搜尋詞的相關性
+            RelevanceValidator.RelevanceResult relevanceResult = relevanceValidator.validateRelevance(searchKeyword);
             
             // 建立回應
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("keyword", searchKeyword);
+            response.put("relevance", relevanceResult.isRelevant());
+            response.put("message", relevanceResult.getMessage());
+
+            // 如果搜尋詞不相關，提供建議但仍然返回結果（讓使用者決定）
+            if (!relevanceResult.isRelevant()) {
+                response.put("warning", true);
+                response.put("suggestions", relevanceResult.getSuggestions());
+                response.put("results", new ArrayList<>()); // 返回空結果
+                response.put("total", 0);
+                return ResponseEntity.ok(response);
+            }
+            
+            // 呼叫 SearchService 進行搜尋
+            ArrayList<SearchResult> results = searchService.search(searchKeyword);
+            
             response.put("total", results.size());
             response.put("results", results);
             
@@ -195,6 +213,47 @@ public class SearchController {
             errorResponse.put("success", false);
             errorResponse.put("error", "取得咖啡廳資訊失敗: " + e.getMessage());
             
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                 .body(errorResponse);
+        }
+    }
+
+    /**
+     * 檢查搜尋詞相關性 API
+     * GET /api/search/validate?q=星巴克
+     * 
+     * @param q 搜尋關鍵字
+     * @return 相關性檢查結果
+     */
+    @GetMapping("/search/validate")
+    public ResponseEntity<Map<String, Object>> validateSearchKeyword(
+            @RequestParam(value = "q", required = false) String q) {
+        
+        try {
+            if (q == null || q.trim().isEmpty()) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("success", false);
+                errorResponse.put("error", "請提供搜尋關鍵字");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+
+            // 檢查相關性
+            RelevanceValidator.RelevanceResult result = relevanceValidator.validateRelevance(q);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("keyword", q);
+            response.put("isRelevant", result.isRelevant());
+            response.put("message", result.getMessage());
+            response.put("suggestions", result.getSuggestions());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("error", "驗證失敗: " + e.getMessage());
+
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                                  .body(errorResponse);
         }

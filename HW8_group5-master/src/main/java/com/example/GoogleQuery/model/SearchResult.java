@@ -25,6 +25,12 @@ public class SearchResult implements Comparable<SearchResult> {
     private Double latitude;
     private Double longitude;
     
+    // Stage 3: Google 搜尋整合欄位
+    private String source;  // "local" 或 "google"
+    private boolean isGoogleResult;  // 是否為 Google 搜尋結果
+    private String district;  // 地區（本地結果用）
+    private String address;   // 地址（本地結果用）
+    
     /**
      * 建構子
      * @param page 網站
@@ -46,6 +52,8 @@ public class SearchResult implements Comparable<SearchResult> {
         this.userRatingsTotal = null;
         this.latitude = null;
         this.longitude = null;
+        this.source = "local";
+        this.isGoogleResult = false;
     }
 
     /**
@@ -293,6 +301,40 @@ public class SearchResult implements Comparable<SearchResult> {
 
     public void setLongitude(Double longitude) {
         this.longitude = longitude;
+    }
+
+    // ========== Stage 3: Google 搜尋整合欄位 Getters/Setters ==========
+
+    /**
+     * 取得搜尋結果來源
+     * @return "local" 或 "google"
+     */
+    public String getSource() {
+        return source;
+    }
+
+    /**
+     * 設定搜尋結果來源
+     * @param source "local" 或 "google"
+     */
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    /**
+     * 檢查是否為 Google 搜尋結果
+     * @return true 如果是 Google 結果
+     */
+    public boolean isGoogleResult() {
+        return isGoogleResult;
+    }
+
+    /**
+     * 設定是否為 Google 搜尋結果
+     * @param googleResult true 如果是 Google 結果
+     */
+    public void setGoogleResult(boolean googleResult) {
+        isGoogleResult = googleResult;
     }
 
     public String getOpeningHours() {
